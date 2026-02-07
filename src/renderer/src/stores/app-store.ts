@@ -51,7 +51,7 @@ export const useAppStore = create<AppState>((set) => ({
   theme: (localStorage.getItem('claude-gui-theme') as 'dark' | 'light') || 'dark',
   sidebarCollapsed: false,
   currentPage: 'dashboard',
-  currentProjectDir: null,
+  currentProjectDir: localStorage.getItem('claude-gui-project-dir'),
   sessions: [],
   activeSessionId: null,
   pendingSessionMemory: null,
@@ -74,7 +74,14 @@ export const useAppStore = create<AppState>((set) => ({
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setCurrentPage: (page) => set({ currentPage: page }),
-  setCurrentProjectDir: (dir) => set({ currentProjectDir: dir }),
+  setCurrentProjectDir: (dir) => {
+    if (dir) {
+      localStorage.setItem('claude-gui-project-dir', dir)
+    } else {
+      localStorage.removeItem('claude-gui-project-dir')
+    }
+    set({ currentProjectDir: dir })
+  },
   setSessions: (sessions) => set({ sessions }),
   setPendingSessionMemory: (memory) => set({ pendingSessionMemory: memory }),
   setActiveSessionId: (id) => set({ activeSessionId: id }),

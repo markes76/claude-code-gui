@@ -47,7 +47,7 @@ const THEME = {
 }
 
 const MODELS = [
-  { id: 'opus', label: 'Claude Opus 4', desc: 'Most capable' },
+  { id: 'opus', label: 'Claude Opus 4.6', desc: 'Most capable' },
   { id: 'sonnet', label: 'Claude Sonnet 4.5', desc: 'Balanced' },
   { id: 'haiku', label: 'Claude Haiku 4.5', desc: 'Fastest' },
 ]
@@ -66,10 +66,10 @@ function extractBufferText(terminal: Terminal): string {
 }
 
 export function TerminalPage() {
-  const { cliAvailable, pendingSessionMemory, setPendingSessionMemory, addActivity } = useAppStore()
+  const { cliAvailable, currentProjectDir, pendingSessionMemory, setPendingSessionMemory, addActivity } = useAppStore()
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const [selectedModel, setSelectedModel] = useState('sonnet')
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('claude-gui-model') || 'opus')
   const [showModelPicker, setShowModelPicker] = useState(false)
 
   // Save Memory modal state
@@ -136,9 +136,10 @@ export function TerminalPage() {
       terminal.open(container)
       fitAddon.fit()
 
-      // Spawn Claude in PTY
+      // Spawn Claude in PTY — use project dir as cwd so Claude works inside the project
       const result = await api.pty.spawn({
         model: model || selectedModel,
+        cwd: currentProjectDir || undefined,
       })
 
       if (result.error || !result.id) {
@@ -251,7 +252,7 @@ export function TerminalPage() {
     tab.dead = false
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, dead: false } : t))
 
-    const result = await api.pty.spawn({ model: selectedModel })
+    const result = await api.pty.spawn({ model: selectedModel, cwd: currentProjectDir || undefined })
     if (result.error || !result.id) {
       tab.terminal.writeln(`\r\n\x1b[31mFailed to restart: ${result.error}\x1b[0m`)
       tab.dead = true
@@ -506,7 +507,7 @@ export function TerminalPage() {
                 {MODELS.map(m => (
                   <button
                     key={m.id}
-                    onClick={() => { setSelectedModel(m.id); setShowModelPicker(false) }}
+                    onClick={() => { setSelectedModel(m.id); localStorage.setItem('claude-gui-model', m.id); setShowModelPicker(false) }}
                     className={cn(
                       'w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors',
                       selectedModel === m.id && 'text-accent-orange'
@@ -519,6 +520,13 @@ export function TerminalPage() {
               </div>
             )}
           </div>
+
+          {/* Current project directory indicator */}
+          {currentProjectDir && (
+            <div className="text-[10px] text-text-muted font-mono truncate max-w-[200px]" title={currentProjectDir}>
+              {currentProjectDir.split('/').pop()}
+            </div>
+          )}
 
           <div className="w-px h-5 bg-border mx-1" />
 
