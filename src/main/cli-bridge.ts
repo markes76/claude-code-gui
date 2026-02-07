@@ -2,7 +2,7 @@ import { IpcMain } from 'electron'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync, realpathSync, readdirSync } from 'fs'
 
 interface ClaudeSession {
   id: string
@@ -16,31 +16,10 @@ interface ClaudeSession {
 const sessions = new Map<string, ClaudeSession>()
 let sessionCounter = 0
 
-// Cached login shell PATH (expensive to compute — do it once)
-let _cachedLoginPath: string | null = null
+// ── PATH Resolution ──────────────────────────────────────────────────
+// Electron packaged apps get a minimal PATH from macOS launchd.
+// We build a comprehensive PATH that covers all common install locations.
 
-// Get the user's actual login shell PATH by spawning a login shell
-function getLoginShellPath(): string {
-  if (_cachedLoginPath !== null) return _cachedLoginPath
-
-  try {
-    const shell = process.env.SHELL || '/bin/zsh'
-    const result = execSync(`${shell} -ilc 'echo $PATH'`, {
-      encoding: 'utf-8',
-      timeout: 5000,
-    }).trim()
-    if (result) {
-      _cachedLoginPath = result
-      return result
-    }
-  } catch { /* ignore — fall back to manual construction */ }
-
-  _cachedLoginPath = ''
-  return ''
-}
-
-// Build a rich PATH that includes common user binary locations
-// Electron doesn't inherit the user's login shell PATH
 function buildUserPath(): string {
   const home = homedir()
   const extraPaths = [
@@ -52,11 +31,11 @@ function buildUserPath(): string {
     join(home, '.cargo', 'bin'),
   ]
 
-  // Try to find active nvm node version
+  // Find nvm node versions
   const nvmDir = join(home, '.nvm', 'versions', 'node')
   if (existsSync(nvmDir)) {
     try {
-      const versions = require('fs').readdirSync(nvmDir)
+      const versions = readdirSync(nvmDir)
       if (versions.length > 0) {
         const latest = versions.sort().reverse()[0]
         extraPaths.push(join(nvmDir, latest, 'bin'))
@@ -64,16 +43,24 @@ function buildUserPath(): string {
     } catch { /* ignore */ }
   }
 
-  // Get the user's actual login shell PATH (most reliable in packaged app)
-  const loginPath = getLoginShellPath()
-
   const systemPath = process.env.PATH || '/usr/bin:/bin'
-  return [...extraPaths, loginPath, systemPath].filter(Boolean).join(':')
+  return [...extraPaths, systemPath].join(':')
 }
+
+// Shared env for all spawned processes
+function getSpawnEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    PATH: buildUserPath(),
+  }
+}
+
+// ── Claude Binary Resolution ─────────────────────────────────────────
+// Find the claude binary, then resolve it to the actual JS script.
+// This lets us run `node cli.js` directly — no shell, no shebang issues.
 
 function getClaudePath(): string {
   const home = homedir()
-  // Check known locations directly (no shell needed)
   const candidates = [
     join(home, '.npm-global', 'bin', 'claude'),
     '/usr/local/bin/claude',
@@ -83,69 +70,114 @@ function getClaudePath(): string {
   ]
 
   for (const c of candidates) {
-    if (existsSync(c)) {
-      return c
-    }
+    if (existsSync(c)) return c
   }
 
-  // Try which with enriched PATH
   try {
-    const richPath = buildUserPath()
-    const path = execSync('which claude', {
+    return execSync('which claude', {
       encoding: 'utf-8',
-      env: { ...process.env, PATH: richPath }
+      env: getSpawnEnv(),
     }).trim()
-    return path
   } catch { /* ignore */ }
 
-  return 'claude' // fallback
+  return 'claude'
 }
 
-// Shared env with enriched PATH for all spawned processes
-function getSpawnEnv(): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    PATH: buildUserPath(),
+// Resolve symlink to find the actual JS entry point (e.g., cli.js)
+function resolveClaudeScript(claudePath: string): string | null {
+  try {
+    const realPath = realpathSync(claudePath)
+    if (realPath.endsWith('.js') || realPath.endsWith('.mjs')) {
+      return realPath
+    }
+    // If it's not a JS file, check if it's a script with a shebang
+    const content = readFileSync(realPath, 'utf-8').slice(0, 200)
+    if (content.startsWith('#!/')) {
+      return realPath
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+// Find the Node.js binary
+function findNodePath(): string | null {
+  const home = homedir()
+
+  // Check nvm first (most common for dev setups)
+  const nvmDir = join(home, '.nvm', 'versions', 'node')
+  if (existsSync(nvmDir)) {
+    try {
+      const versions = readdirSync(nvmDir)
+      if (versions.length > 0) {
+        const latest = versions.sort().reverse()[0]
+        const nodePath = join(nvmDir, latest, 'bin', 'node')
+        if (existsSync(nodePath)) return nodePath
+      }
+    } catch { /* ignore */ }
   }
+
+  // Check common locations
+  const candidates = [
+    '/usr/local/bin/node',
+    '/opt/homebrew/bin/node',
+    join(home, '.local', 'bin', 'node'),
+    join(home, '.bun', 'bin', 'node'),
+  ]
+
+  for (const c of candidates) {
+    if (existsSync(c)) return c
+  }
+
+  // Try the enriched PATH
+  try {
+    return execSync('which node', {
+      encoding: 'utf-8',
+      env: getSpawnEnv(),
+    }).trim()
+  } catch { /* ignore */ }
+
+  return null
 }
 
-function generateSessionId(): string {
-  return `session-${++sessionCounter}-${Date.now()}`
-}
+// ── Core CLI Spawn ───────────────────────────────────────────────────
+// Run claude CLI commands by executing `node cli.js` directly.
+// This bypasses all shell issues (shebangs, login profiles, PATH).
+// Falls back to login shell approach if direct execution isn't possible.
 
-// Shell-escape an argument for safe interpolation into a shell command string
-function shellEscape(arg: string): string {
-  if (/^[a-zA-Z0-9._\-/=]+$/.test(arg)) return arg
-  return "'" + arg.replace(/'/g, "'\\''") + "'"
-}
-
-// Spawn claude through the user's login shell (same approach as pty-bridge).
-// This ensures shebangs are handled, PATH is loaded from .zprofile/.zshrc,
-// and Node.js (required by claude CLI) is available.
-function spawnClaudeViaShell(
+function spawnClaude(
   claudePath: string,
+  nodePath: string | null,
+  claudeScript: string | null,
   args: string[],
   options: { cwd?: string; timeout?: number }
 ): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const shell = process.env.SHELL || '/bin/zsh'
-    const cmdParts = [claudePath, ...args].map(shellEscape)
-    const fullCmd = cmdParts.join(' ')
+    const cwd = options.cwd || homedir() // NEVER use process.cwd() — it's "/" in packaged apps
+    const timeout = options.timeout || 60000
+    const env = getSpawnEnv()
 
-    const proc = spawn(shell, ['-l', '-c', fullCmd], {
-      cwd: options.cwd || process.cwd(),
-      env: {
-        ...process.env,
-        PATH: buildUserPath(),
-      },
-    })
+    let proc: ChildProcess
 
-    // Close stdin immediately — prompt is passed via -p flag
+    if (nodePath && claudeScript) {
+      // DIRECT: node /path/to/cli.js args...
+      // No shell needed. No shebang issues. No PATH issues. No profile noise.
+      console.log('[cli] Direct spawn: node', claudeScript, args.length, 'args, cwd:', cwd)
+      proc = spawn(nodePath, [claudeScript, ...args], { cwd, env })
+    } else {
+      // FALLBACK: login shell
+      console.log('[cli] Shell fallback: zsh -l -c claude ...args, cwd:', cwd)
+      const shell = process.env.SHELL || '/bin/zsh'
+      const cmdParts = [claudePath, ...args].map(a => {
+        if (/^[a-zA-Z0-9._\-/=]+$/.test(a)) return a
+        return "'" + a.replace(/'/g, "'\\''") + "'"
+      })
+      proc = spawn(shell, ['-l', '-c', cmdParts.join(' ')], { cwd, env })
+    }
+
     proc.stdin?.end()
 
     let stdout = ''
     let stderr = ''
-    const timeout = options.timeout || 60000
 
     const timer = setTimeout(() => {
       proc.kill('SIGTERM')
@@ -154,19 +186,29 @@ function spawnClaudeViaShell(
 
     proc.stdout?.on('data', (d) => { stdout += d.toString() })
     proc.stderr?.on('data', (d) => { stderr += d.toString() })
-    proc.on('close', (code) => { clearTimeout(timer); resolve({ code, stdout, stderr }) })
-    proc.on('error', (e) => { clearTimeout(timer); resolve({ code: -1, stdout: '', stderr: e.message }) })
+    proc.on('close', (code) => {
+      clearTimeout(timer)
+      console.log('[cli] Done. code:', code, 'stdout:', stdout.length, 'stderr:', stderr.length)
+      resolve({ code, stdout, stderr })
+    })
+    proc.on('error', (e) => {
+      clearTimeout(timer)
+      console.error('[cli] Error:', e.message)
+      resolve({ code: -1, stdout: '', stderr: e.message })
+    })
   })
+}
+
+function generateSessionId(): string {
+  return `session-${++sessionCounter}-${Date.now()}`
 }
 
 // Read API key from environment or ~/.claude/.env file
 function getAnthropicApiKey(): string | null {
-  // 1. Check process env (set by shell or system)
   if (process.env.ANTHROPIC_API_KEY) {
     return process.env.ANTHROPIC_API_KEY
   }
 
-  // 2. Read from ~/.claude/.env
   try {
     const envPath = join(homedir(), '.claude', '.env')
     if (existsSync(envPath)) {
@@ -189,18 +231,28 @@ function getAnthropicApiKey(): string | null {
   return null
 }
 
+// ── IPC Handlers ─────────────────────────────────────────────────────
+
 export function registerCliBridgeHandlers(ipcMain: IpcMain): void {
   const claudePath = getClaudePath()
+  const claudeScript = resolveClaudeScript(claudePath)
+  const nodePath = findNodePath()
+
+  console.log('[cli-bridge] claudePath:', claudePath)
+  console.log('[cli-bridge] claudeScript:', claudeScript)
+  console.log('[cli-bridge] nodePath:', nodePath)
+  console.log('[cli-bridge] cwd:', process.cwd())
+  console.log('[cli-bridge] home:', homedir())
 
   // Check if Claude CLI is available
   ipcMain.handle('cli:check', async () => {
     try {
-      const shell = process.env.SHELL || '/bin/zsh'
-      const version = execSync(`${shell} -l -c '${shellEscape(claudePath)} --version 2>&1'`, {
-        encoding: 'utf-8',
-        timeout: 10000,
-      }).trim()
-      return { available: true, version, path: claudePath }
+      const result = await spawnClaude(claudePath, nodePath, claudeScript, ['--version'], { timeout: 10000 })
+      const version = result.stdout.trim()
+      if (version && result.code === 0) {
+        return { available: true, version, path: claudePath }
+      }
+      return { available: false, version: null, path: null }
     } catch {
       return { available: false, version: null, path: null }
     }
@@ -253,7 +305,6 @@ export function registerCliBridgeHandlers(ipcMain: IpcMain): void {
       return { error: 'Session not found' }
     }
 
-    // We return the command info for the renderer to use with xterm
     return {
       command: claudePath,
       cwd: session.cwd,
@@ -273,13 +324,10 @@ export function registerCliBridgeHandlers(ipcMain: IpcMain): void {
       args.push('--model', options.model)
     }
 
-    console.log('[cli:exec] Running via login shell:', claudePath, args.length, 'args')
-    const result = await spawnClaudeViaShell(claudePath, args, {
+    return spawnClaude(claudePath, nodePath, claudeScript, args, {
       cwd: options.cwd,
       timeout: options.timeout || 120000,
     })
-    console.log('[cli:exec] Done. code:', result.code, 'stdout:', result.stdout.length, 'stderr:', result.stderr.length)
-    return result
   })
 
   // Run a slash command
@@ -292,7 +340,7 @@ export function registerCliBridgeHandlers(ipcMain: IpcMain): void {
       ? `/${options.command} ${options.args}`
       : `/${options.command}`
 
-    return spawnClaudeViaShell(claudePath, ['-p', fullCommand], {
+    return spawnClaude(claudePath, nodePath, claudeScript, ['-p', fullCommand], {
       cwd: options.cwd,
       timeout: 120000,
     })
@@ -320,13 +368,12 @@ export function registerCliBridgeHandlers(ipcMain: IpcMain): void {
     return { success: true }
   })
 
-  // ── Direct Anthropic API call for prompt enhancement ──
-  // Much faster than spawning the full CLI (2-3s vs 15-30s)
+  // ── Prompt Enhancement ──
+  // Direct API (fast, needs key) → CLI fallback (works with claude login)
   ipcMain.handle('cli:enhance-prompt', async (_event, prompt: string) => {
     const apiKey = getAnthropicApiKey()
 
     if (apiKey) {
-      // Direct API call — fast path
       try {
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -366,19 +413,17 @@ ${prompt}
             return { success: true, enhanced: text.trim() }
           }
         }
-        // If API call fails, fall through to CLI fallback
         console.log('[enhance-prompt] API returned non-ok:', response.status)
       } catch (e: any) {
         console.log('[enhance-prompt] Direct API failed, falling back to CLI:', e.message)
       }
     }
 
-    // CLI path — works with claude login (Max/Pro/Enterprise subscriptions)
-    // Spawns through login shell so PATH and shebangs resolve correctly
+    // CLI path — works with claude login (Pro/Max/Enterprise)
     try {
-      const enhancePromptText = `Rewrite this prompt to be clearer and more specific for an AI coding assistant. Output ONLY the enhanced prompt, nothing else:\n\n${prompt}`
-      const result = await spawnClaudeViaShell(claudePath, [
-        '-p', enhancePromptText, '--output-format', 'text', '--model', 'haiku'
+      const result = await spawnClaude(claudePath, nodePath, claudeScript, [
+        '-p', `Rewrite this prompt to be clearer and more specific for an AI coding assistant. Output ONLY the enhanced prompt, nothing else:\n\n${prompt}`,
+        '--output-format', 'text', '--model', 'haiku'
       ], { timeout: 45000 })
 
       if (result.stdout.trim()) {
@@ -390,7 +435,7 @@ ${prompt}
     }
   })
 
-  // ── Execute a script file ──
+  // ── Script Execution ──
   ipcMain.handle('cli:run-script', async (_event, filePath: string, cwd?: string) => {
     const ext = filePath.split('.').pop()?.toLowerCase()
     let command: string
@@ -402,7 +447,7 @@ ${prompt}
         args = [filePath]
         break
       case 'js':
-        command = 'node'
+        command = nodePath || 'node'
         args = [filePath]
         break
       case 'ts':
@@ -420,7 +465,7 @@ ${prompt}
 
     return new Promise((resolve) => {
       const proc = spawn(command, args, {
-        cwd: cwd || process.cwd(),
+        cwd: cwd || homedir(),
         env: getSpawnEnv(),
       })
 
@@ -443,8 +488,8 @@ ${prompt}
     })
   })
 
-  // ── Direct API call for session summarization ──
-  // Same fast-path strategy as enhance-prompt
+  // ── Session Summarization ──
+  // Direct API (fast, needs key) → CLI fallback (works with claude login)
   ipcMain.handle('cli:summarize-session', async (_event, transcript: string) => {
     const systemPrompt = `You are creating a session handoff summary. A developer is transitioning from one AI coding session to another. Create a concise summary that lets a fresh AI assistant pick up where the previous session left off.
 
@@ -491,9 +536,9 @@ ${transcript}
       }
     }
 
-    // CLI path — works with claude login (Max/Pro/Enterprise subscriptions)
+    // CLI path — works with claude login (Pro/Max/Enterprise)
     try {
-      const result = await spawnClaudeViaShell(claudePath, [
+      const result = await spawnClaude(claudePath, nodePath, claudeScript, [
         '-p', systemPrompt, '--output-format', 'text', '--model', 'haiku'
       ], { timeout: 60000 })
 
@@ -506,29 +551,23 @@ ${transcript}
     }
   })
 
-  // Get Claude config info
+  // ── Debug Info ──
   ipcMain.handle('cli:get-info', async () => {
+    let version = 'unknown'
     try {
-      const shell = process.env.SHELL || '/bin/zsh'
-      const result = execSync(`${shell} -l -c '${shellEscape(claudePath)} --version 2>&1'`, {
-        encoding: 'utf-8',
-        timeout: 10000,
-      }).trim()
-      return {
-        version: result,
-        claudePath,
-        homeDir: homedir(),
-        configDir: join(homedir(), '.claude'),
-        cwd: process.cwd(),
-      }
-    } catch (e) {
-      return {
-        version: 'unknown',
-        claudePath,
-        homeDir: homedir(),
-        configDir: join(homedir(), '.claude'),
-        cwd: process.cwd(),
-      }
+      const result = await spawnClaude(claudePath, nodePath, claudeScript, ['--version'], { timeout: 10000 })
+      if (result.stdout.trim()) version = result.stdout.trim()
+    } catch { /* ignore */ }
+
+    return {
+      version,
+      claudePath,
+      claudeScript,
+      nodePath,
+      homeDir: homedir(),
+      configDir: join(homedir(), '.claude'),
+      cwd: process.cwd(),
+      hasApiKey: !!getAnthropicApiKey(),
     }
   })
 }
