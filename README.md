@@ -16,7 +16,8 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 - Model selection (Opus, Sonnet, Haiku) from the toolbar
 - Multiple concurrent session tabs
 - Session memory handoff between sessions
-- **Prompt Composer** — AI-powered prompt enhancement for beginners
+- **Prompt Composer** — AI-powered prompt enhancement (direct Anthropic API for speed, CLI fallback for Pro/Max/Enterprise users)
+- **Session Summary** — AI-generated session summaries saved as memories
 
 ### Configuration
 - **CLAUDE.md Editor** — Edit all 4 levels (Global, Project, Local, Private) with live preview, templates, and @import detection
@@ -35,7 +36,9 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 ### Management
 - **Permissions** — Visual tool allow/deny list management
 - **Sessions** — View active PTY sessions and manage session memory
-- **Projects** — Open project directories with configuration health scanner
+- **Projects** — Open project directories with configuration health scanner, file browser, and activity trail
+- **Activity Trail** — See every file Claude created or modified during a session, including files outside your project (scratchpad, tmp, config). Grouped by location with time-range filtering (1h/4h/24h/7d/30d).
+- **File Browser** — Navigate project files, view contents, copy to clipboard, and execute scripts (.py, .js, .ts, .sh) directly
 - **API Keys** — Manage environment variables with 20+ preset templates
 - **Dashboard** — System health overview with stat cards and activity feed
 
@@ -48,7 +51,9 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 
 You need **Claude Code CLI** installed and **one** of:
 - An Anthropic API key (`ANTHROPIC_API_KEY`), OR
-- A Claude Max or Claude Pro subscription (authenticate with `claude login`)
+- A Claude Pro, Max, or Enterprise subscription (authenticate with `claude login`)
+
+Both paths are fully supported. API key users get faster AI features (direct API calls). Pro/Max/Enterprise users get the same features via CLI fallback.
 
 ### Install Claude Code CLI
 
@@ -66,8 +71,8 @@ npm install -g @anthropic-ai/claude-code
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/claude-gui.git
-cd claude-gui
+git clone https://github.com/markes76/claude-code-gui.git
+cd claude-code-gui
 
 # Install dependencies
 npm install
@@ -94,7 +99,8 @@ npm run build:linux   # Linux AppImage
 src/
   main/              # Electron main process
     index.ts         # Window creation, IPC registration
-    file-handlers.ts # Secure file operations (path-validated)
+    cli-bridge.ts    # Claude CLI integration (direct node execution)
+    file-handlers.ts # Secure file operations + activity scanning
     config-handlers.ts # Claude Code config read/write
     pty-bridge.ts    # PTY session management (node-pty)
     session-memory.ts # Session memory persistence
@@ -108,6 +114,17 @@ src/
       types/         # TypeScript type definitions
       lib/           # Utilities
 ```
+
+### CLI Bridge Architecture
+
+The app uses a robust CLI bridge that works reliably in packaged Electron apps:
+
+1. **Resolves the Claude CLI binary** by following symlinks to find the actual `cli.js` script
+2. **Finds the Node.js binary** (nvm, Homebrew, system) independently
+3. **Executes directly** as `node /path/to/cli.js` — bypassing shell entirely
+4. **Falls back** to login shell execution if direct mode fails
+
+This solves the common Electron packaged app problem where `process.cwd()` returns `/` and `PATH` is minimal (`/usr/bin:/bin`).
 
 ## Tech Stack
 
