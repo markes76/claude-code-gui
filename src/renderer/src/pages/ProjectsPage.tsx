@@ -35,7 +35,7 @@ interface FileEntry {
   ext: string
 }
 
-const EXECUTABLE_EXTS = ['py', 'js', 'ts', 'sh', 'bash']
+const EXECUTABLE_EXTS = ['py', 'js', 'ts', 'sh', 'bash', 'ps1', 'bat', 'cmd']
 
 interface ActivityFile {
   name: string

@@ -1,8 +1,10 @@
 import { IpcMain } from 'electron'
 import { spawn, ChildProcess, execSync } from 'child_process'
-import { homedir } from 'os'
-import { join } from 'path'
+import { homedir, tmpdir } from 'os'
+import { join, delimiter } from 'path'
 import { existsSync, readFileSync, realpathSync, readdirSync } from 'fs'
+
+const isWin = process.platform === 'win32'
 
 interface ClaudeSession {
   id: string
@@ -22,29 +24,49 @@ let sessionCounter = 0
 
 function buildUserPath(): string {
   const home = homedir()
-  const extraPaths = [
-    join(home, '.npm-global', 'bin'),
-    join(home, '.local', 'bin'),
-    join(home, '.bun', 'bin'),
-    '/usr/local/bin',
-    '/opt/homebrew/bin',
-    join(home, '.cargo', 'bin'),
-  ]
+  const extraPaths: string[] = []
 
-  // Find nvm node versions
-  const nvmDir = join(home, '.nvm', 'versions', 'node')
-  if (existsSync(nvmDir)) {
-    try {
-      const versions = readdirSync(nvmDir)
-      if (versions.length > 0) {
-        const latest = versions.sort().reverse()[0]
-        extraPaths.push(join(nvmDir, latest, 'bin'))
-      }
-    } catch { /* ignore */ }
+  if (isWin) {
+    extraPaths.push(
+      join(home, 'AppData', 'Roaming', 'npm'),
+      join(home, '.cargo', 'bin'),
+      join(home, '.bun', 'bin'),
+    )
+    // nvm-windows stores versions in AppData\Roaming\nvm
+    const nvmWinDir = join(home, 'AppData', 'Roaming', 'nvm')
+    if (existsSync(nvmWinDir)) {
+      try {
+        const versions = readdirSync(nvmWinDir).filter(v => /^v?\d+/.test(v))
+        if (versions.length > 0) {
+          const latest = versions.sort().reverse()[0]
+          extraPaths.push(join(nvmWinDir, latest))
+        }
+      } catch { /* ignore */ }
+    }
+  } else {
+    extraPaths.push(
+      join(home, '.npm-global', 'bin'),
+      join(home, '.local', 'bin'),
+      join(home, '.bun', 'bin'),
+      '/usr/local/bin',
+      '/opt/homebrew/bin',
+      join(home, '.cargo', 'bin'),
+    )
+    // Find nvm node versions
+    const nvmDir = join(home, '.nvm', 'versions', 'node')
+    if (existsSync(nvmDir)) {
+      try {
+        const versions = readdirSync(nvmDir)
+        if (versions.length > 0) {
+          const latest = versions.sort().reverse()[0]
+          extraPaths.push(join(nvmDir, latest, 'bin'))
+        }
+      } catch { /* ignore */ }
+    }
   }
 
-  const systemPath = process.env.PATH || '/usr/bin:/bin'
-  return [...extraPaths, systemPath].join(':')
+  const systemPath = process.env.PATH || ''
+  return [...extraPaths, systemPath].filter(Boolean).join(delimiter)
 }
 
 // Shared env for all spawned processes
@@ -61,23 +83,31 @@ function getSpawnEnv(): NodeJS.ProcessEnv {
 
 function getClaudePath(): string {
   const home = homedir()
-  const candidates = [
-    join(home, '.npm-global', 'bin', 'claude'),
-    '/usr/local/bin/claude',
-    join(home, '.local', 'bin', 'claude'),
-    join(home, '.bun', 'bin', 'claude'),
-    '/opt/homebrew/bin/claude',
-  ]
+  const candidates = isWin
+    ? [
+        join(home, 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+        join(home, 'AppData', 'Roaming', 'npm', 'claude'),
+        join(home, '.npm-global', 'bin', 'claude'),
+        join(home, '.bun', 'bin', 'claude'),
+      ]
+    : [
+        join(home, '.npm-global', 'bin', 'claude'),
+        '/usr/local/bin/claude',
+        join(home, '.local', 'bin', 'claude'),
+        join(home, '.bun', 'bin', 'claude'),
+        '/opt/homebrew/bin/claude',
+      ]
 
   for (const c of candidates) {
     if (existsSync(c)) return c
   }
 
   try {
-    return execSync('which claude', {
+    const cmd = isWin ? 'where claude' : 'which claude'
+    return execSync(cmd, {
       encoding: 'utf-8',
       env: getSpawnEnv(),
-    }).trim()
+    }).trim().split('\n')[0]
   } catch { /* ignore */ }
 
   return 'claude'
@@ -103,26 +133,46 @@ function resolveClaudeScript(claudePath: string): string | null {
 function findNodePath(): string | null {
   const home = homedir()
 
-  // Check nvm first (most common for dev setups)
-  const nvmDir = join(home, '.nvm', 'versions', 'node')
-  if (existsSync(nvmDir)) {
-    try {
-      const versions = readdirSync(nvmDir)
-      if (versions.length > 0) {
-        const latest = versions.sort().reverse()[0]
-        const nodePath = join(nvmDir, latest, 'bin', 'node')
-        if (existsSync(nodePath)) return nodePath
-      }
-    } catch { /* ignore */ }
+  if (isWin) {
+    // nvm-windows stores versions in AppData\Roaming\nvm
+    const nvmWinDir = join(home, 'AppData', 'Roaming', 'nvm')
+    if (existsSync(nvmWinDir)) {
+      try {
+        const versions = readdirSync(nvmWinDir).filter(v => /^v?\d+/.test(v))
+        if (versions.length > 0) {
+          const latest = versions.sort().reverse()[0]
+          const nodePath = join(nvmWinDir, latest, 'node.exe')
+          if (existsSync(nodePath)) return nodePath
+        }
+      } catch { /* ignore */ }
+    }
+  } else {
+    // Check nvm first (most common for dev setups)
+    const nvmDir = join(home, '.nvm', 'versions', 'node')
+    if (existsSync(nvmDir)) {
+      try {
+        const versions = readdirSync(nvmDir)
+        if (versions.length > 0) {
+          const latest = versions.sort().reverse()[0]
+          const nodePath = join(nvmDir, latest, 'bin', 'node')
+          if (existsSync(nodePath)) return nodePath
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   // Check common locations
-  const candidates = [
-    '/usr/local/bin/node',
-    '/opt/homebrew/bin/node',
-    join(home, '.local', 'bin', 'node'),
-    join(home, '.bun', 'bin', 'node'),
-  ]
+  const candidates = isWin
+    ? [
+        join(home, 'AppData', 'Roaming', 'npm', 'node'),
+        join(home, '.bun', 'bin', 'node'),
+      ]
+    : [
+        '/usr/local/bin/node',
+        '/opt/homebrew/bin/node',
+        join(home, '.local', 'bin', 'node'),
+        join(home, '.bun', 'bin', 'node'),
+      ]
 
   for (const c of candidates) {
     if (existsSync(c)) return c
@@ -130,10 +180,11 @@ function findNodePath(): string | null {
 
   // Try the enriched PATH
   try {
-    return execSync('which node', {
+    const cmd = isWin ? 'where node' : 'which node'
+    return execSync(cmd, {
       encoding: 'utf-8',
       env: getSpawnEnv(),
-    }).trim()
+    }).trim().split('\n')[0]
   } catch { /* ignore */ }
 
   return null
@@ -163,8 +214,17 @@ function spawnClaude(
       // No shell needed. No shebang issues. No PATH issues. No profile noise.
       console.log('[cli] Direct spawn: node', claudeScript, args.length, 'args, cwd:', cwd)
       proc = spawn(nodePath, [claudeScript, ...args], { cwd, env })
+    } else if (isWin) {
+      // FALLBACK (Windows): cmd.exe /c
+      console.log('[cli] Shell fallback: cmd /c claude ...args, cwd:', cwd)
+      const shell = process.env.COMSPEC || 'cmd.exe'
+      const cmdParts = [claudePath, ...args].map(a => {
+        if (/^[a-zA-Z0-9._\-/\\:=]+$/.test(a)) return a
+        return '"' + a.replace(/"/g, '""') + '"'
+      })
+      proc = spawn(shell, ['/c', cmdParts.join(' ')], { cwd, env })
     } else {
-      // FALLBACK: login shell
+      // FALLBACK (Unix): login shell
       console.log('[cli] Shell fallback: zsh -l -c claude ...args, cwd:', cwd)
       const shell = process.env.SHELL || '/bin/zsh'
       const cmdParts = [claudePath, ...args].map(a => {
@@ -443,7 +503,7 @@ ${prompt}
 
     switch (ext) {
       case 'py':
-        command = 'python3'
+        command = isWin ? 'py' : 'python3'
         args = [filePath]
         break
       case 'js':
@@ -458,6 +518,15 @@ ${prompt}
       case 'bash':
         command = 'bash'
         args = [filePath]
+        break
+      case 'ps1':
+        command = 'powershell.exe'
+        args = ['-ExecutionPolicy', 'Bypass', '-File', filePath]
+        break
+      case 'bat':
+      case 'cmd':
+        command = process.env.COMSPEC || 'cmd.exe'
+        args = ['/c', filePath]
         break
       default:
         return { success: false, output: `Unsupported file type: .${ext}` }
