@@ -111,7 +111,7 @@ export function MemoryPage() {
 
       // Auto-expand current project
       if (currentProjectDir) {
-        const encoded = currentProjectDir.replace(/\//g, '-')
+        const encoded = currentProjectDir.replace(/[/\\]/g, '-')
         const match = memProjects.find(p => p.dirPath.includes(encoded))
         if (match) {
           setExpandedProjects(new Set([match.dirPath]))

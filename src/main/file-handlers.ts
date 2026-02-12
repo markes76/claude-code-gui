@@ -1,8 +1,10 @@
 import { IpcMain, dialog } from 'electron'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync, realpathSync, lstatSync } from 'fs'
-import { join, dirname, basename, extname, resolve, relative } from 'path'
-import { homedir } from 'os'
+import { join, dirname, basename, extname, resolve, relative, sep } from 'path'
+import { homedir, tmpdir } from 'os'
 import { execSync } from 'child_process'
+
+const isWin = process.platform === 'win32'
 
 /**
  * Validates that a file path is within allowed directories.
@@ -13,13 +15,21 @@ import { execSync } from 'child_process'
 function validatePath(inputPath: string): string {
   const resolved = resolve(inputPath)
   const home = homedir()
+  const tmp = tmpdir()
 
-  // Allow anything under the user's home directory or /tmp
-  if (resolved.startsWith(home + '/') || resolved === home || resolved.startsWith('/tmp/') || resolved === '/tmp') {
+  // Allow anything under the user's home directory or temp directory
+  if (
+    resolved === home ||
+    resolved.startsWith(home + sep) ||
+    resolved === tmp ||
+    resolved.startsWith(tmp + sep) ||
+    // macOS /tmp -> /private/tmp symlink
+    (!isWin && (resolved.startsWith('/tmp/') || resolved === '/tmp'))
+  ) {
     return resolved
   }
 
-  throw new Error(`Access denied: path "${resolved}" is outside allowed directories (home: ${home}, /tmp)`)
+  throw new Error(`Access denied: path "${resolved}" is outside allowed directories (home: ${home}, tmp: ${tmp})`)
 }
 
 export function registerFileHandlers(ipcMain: IpcMain): void {
@@ -199,9 +209,9 @@ export function registerFileHandlers(ipcMain: IpcMain): void {
       scanDir(projectDir, 'project')
     }
 
-    // 2. Scan Claude scratchpad directories (/private/tmp/claude-*)
+    // 2. Scan Claude scratchpad directories (claude-* in temp)
     try {
-      const tmpDirs = ['/private/tmp', '/tmp']
+      const tmpDirs = isWin ? [tmpdir()] : ['/private/tmp', '/tmp']
       for (const tmpBase of tmpDirs) {
         if (!existsSync(tmpBase)) continue
         const entries = readdirSync(tmpBase)
@@ -231,7 +241,7 @@ export function registerFileHandlers(ipcMain: IpcMain): void {
     const globalDir = join(home, '.claude')
 
     // Compute auto memory path for this project
-    const encodedProject = projectDir.replace(/\//g, '-')
+    const encodedProject = projectDir.replace(/[/\\]/g, '-')
     const autoMemDir = join(globalDir, 'projects', encodedProject, 'memory')
 
     return {
