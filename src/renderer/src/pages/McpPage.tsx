@@ -16,14 +16,28 @@ const WIZARD_STEPS: WizardStepDef[] = [
 ]
 
 const POPULAR_SERVERS = [
+  // Productivity & Development
   { name: 'github', label: 'GitHub', desc: 'PRs, issues, repos', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
   { name: 'filesystem', label: 'Filesystem', desc: 'Local file access', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] },
   { name: 'brave-search', label: 'Brave Search', desc: 'Web search', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-brave-search'] },
-  { name: 'memory', label: 'Memory', desc: 'Persistent knowledge', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-  { name: 'postgres', label: 'PostgreSQL', desc: 'Database queries', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
-  { name: 'slack', label: 'Slack', desc: 'Messages, channels', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'] },
   { name: 'puppeteer', label: 'Puppeteer', desc: 'Browser automation', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-puppeteer'] },
   { name: 'sequential-thinking', label: 'Sequential Thinking', desc: 'Task breakdown', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
+  // Databases
+  { name: 'postgres', label: 'PostgreSQL', desc: 'Database queries', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-postgres'] },
+  { name: 'sqlite', label: 'SQLite', desc: 'Local SQLite DB', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-sqlite'] },
+  // Communication
+  { name: 'slack', label: 'Slack', desc: 'Messages, channels', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'] },
+  // Knowledge & Memory
+  { name: 'memory', label: 'Memory', desc: 'Persistent knowledge', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
+  { name: 'everything', label: 'Everything', desc: 'Demos all MCP features', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-everything'] },
+  // Cloud & DevOps
+  { name: 'aws-kb-retrieval', label: 'AWS KB Retrieval', desc: 'AWS Knowledge Base', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-aws-kb-retrieval'] },
+  { name: 'gitlab', label: 'GitLab', desc: 'GitLab repos & MRs', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'] },
+  // Productivity
+  { name: 'google-drive', label: 'Google Drive', desc: 'Docs, sheets, files', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-gdrive'] },
+  { name: 'google-maps', label: 'Google Maps', desc: 'Location & directions', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-google-maps'] },
+  { name: 'sentry', label: 'Sentry', desc: 'Error tracking', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-sentry'] },
+  { name: 'fetch', label: 'Fetch', desc: 'HTTP requests & scraping', type: 'stdio' as const, command: 'npx', args: ['-y', '@modelcontextprotocol/server-fetch'] },
 ]
 
 export function McpPage() {
