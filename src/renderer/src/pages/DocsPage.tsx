@@ -16,6 +16,37 @@ interface DocSection {
 
 const DOCS: DocSection[] = [
   {
+    id: 'whats-new',
+    title: "What's New",
+    icon: <Wand2 size={18} />,
+    content: `# What's New
+
+## Latest Enhancements
+
+### New Models (Feb 2026)
+- **Claude Sonnet 4.6** — Added to the model picker in the terminal and settings. Offers an updated, balanced option alongside Sonnet 4.5.
+
+### Terminal: Session Flags
+Two new toggle buttons in the terminal toolbar let you customize how sessions start:
+
+- **Continue** (clock icon) — Passes \`--continue\` to Claude Code. New terminal tabs will resume your last conversation automatically, skipping the initial greeting. Great for picking up exactly where you left off.
+- **Skip Perms** (shield icon) — Passes \`--dangerously-skip-permissions\` to Claude Code. Removes all tool permission prompts. Use only in trusted projects where you don't want interruptions.
+
+Both flags are toggle buttons: click to activate (highlighted in blue/red), click again to deactivate. They apply to every new tab you open while active.
+
+### Dashboard: Diagnostics
+A new **Diagnose** button (stethoscope icon) in the System Status card runs a full environment check:
+- Claude Code version
+- CLI installation path
+- Config directory location
+- API key detection (shows whether ANTHROPIC_API_KEY is set or if you're using claude login)
+
+### MCP Marketplace Expansion
+The popular servers list has grown from 8 to 16 servers, organized by category:
+- **New entries:** SQLite, Everything, AWS KB Retrieval, GitLab, Google Drive, Google Maps, Sentry, Fetch
+- All official \`@modelcontextprotocol\` packages via npx one-click install`,
+  },
+  {
     id: 'getting-started',
     title: 'Getting Started',
     icon: <HelpCircle size={18} />,
@@ -61,12 +92,20 @@ The Dashboard is your home screen showing the health and status of your Claude C
 
 ## Features
 - **CLI Status** — Shows whether Claude Code CLI is detected and its version
+- **Diagnostics** — Click the stethoscope icon to run a full environment check: version, CLI path, config directory, and API key status
 - **Stat Cards** — Counts of your skills, agents, MCP servers, hooks, and commands
 - **Quick Actions** — One-click navigation to key sections
 - **Activity Feed** — Recent configuration changes and events
 
 ## CLI Detection
-The app automatically checks for the Claude Code CLI on startup. If it's not found, you'll see a red "CLI Not Found" badge in the top bar. Install Claude Code CLI and restart the app.`
+The app automatically checks for the Claude Code CLI on startup. If it's not found, you'll see a red "CLI Not Found" badge in the top bar. Install Claude Code CLI and restart the app.
+
+## Diagnostics
+Click **Diagnose** in the System Status card to see:
+- Claude Code version number
+- Resolved CLI binary path
+- Config directory location (\`~/.claude/\`)
+- Whether ANTHROPIC_API_KEY is set (or if you're using claude login instead)`
   },
   {
     id: 'terminal',
@@ -78,9 +117,14 @@ A full interactive Claude Code terminal with real PTY (pseudo-terminal) support.
 
 ## Features
 - **Real PTY** — Full terminal emulation via node-pty and xterm.js, not a simple exec wrapper
-- **Model Selection** — Switch between Opus, Sonnet, and Haiku from the toolbar
+- **Model Selection** — Switch between Opus 4.6, Sonnet 4.6, Sonnet 4.5, and Haiku 4.5 from the toolbar
 - **Session Tabs** — Run multiple concurrent Claude Code sessions
 - **Session Memory** — Create memory summaries to hand off context between sessions
+
+## Session Flags
+Two toggles in the toolbar customize how each new session starts:
+- **Continue** (clock icon) — Adds \`--continue\` flag. New tabs resume your last conversation automatically, skipping Claude's greeting.
+- **Skip Perms** (shield-off icon) — Adds \`--dangerously-skip-permissions\` flag. Suppresses all tool permission prompts. Use in trusted projects only.
 
 ## Prompt Composer
 At the bottom of the terminal, the **Prompt Composer** helps beginners write better prompts:
@@ -100,7 +144,8 @@ Type directly in the terminal:
 - \`/clear\` — Clear conversation
 - \`/compact\` — Compress conversation context
 - \`/memory\` — Save a memory note
-- \`/init\` — Generate a CLAUDE.md from your project`
+- \`/init\` — Generate a CLAUDE.md from your project
+- \`/doctor\` — Run a built-in health check`
   },
   {
     id: 'claude-md',
@@ -224,7 +269,7 @@ Manage Claude Code settings at three scope levels.
 Toggle between a visual form editor and raw JSON mode for full control.
 
 ## Key Settings
-- **Model** — Default model (Opus 4.6, Sonnet 4.5, Haiku 4.5)
+- **Model** — Default model (Opus 4.6, Sonnet 4.6, Sonnet 4.5, Haiku 4.5)
 - **Allowed Tools** — Whitelist specific tools Claude can use
 - **Denied Tools** — Blacklist tools you want to restrict
 - **Custom Instructions** — Additional behavioral instructions

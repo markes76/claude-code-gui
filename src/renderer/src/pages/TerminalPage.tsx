@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Plus, X, Monitor, ChevronDown, RotateCcw, Terminal as TermIcon,
-  Brain, Loader2, Sparkles, Send, ChevronUp, Minimize2, FolderOpen, Clock
+  Brain, Loader2, Sparkles, Send, ChevronUp, Minimize2, FolderOpen, Clock,
+  History, ShieldOff
 } from 'lucide-react'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -48,6 +49,7 @@ const THEME = {
 
 const MODELS = [
   { id: 'opus', label: 'Claude Opus 4.6', desc: 'Most capable' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: 'Balanced (latest)' },
   { id: 'sonnet', label: 'Claude Sonnet 4.5', desc: 'Balanced' },
   { id: 'haiku', label: 'Claude Haiku 4.5', desc: 'Fastest' },
 ]
@@ -71,6 +73,8 @@ export function TerminalPage() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('claude-gui-model') || 'opus')
   const [showModelPicker, setShowModelPicker] = useState(false)
+  const [continueSession, setContinueSession] = useState(false)
+  const [skipPermissions, setSkipPermissions] = useState(false)
 
   // Save Memory modal state
   const [showSaveMemory, setShowSaveMemory] = useState(false)
@@ -137,9 +141,13 @@ export function TerminalPage() {
       fitAddon.fit()
 
       // Spawn Claude in PTY — use project dir as cwd so Claude works inside the project
+      const extraArgs: string[] = []
+      if (continueSession) extraArgs.push('--continue')
+      if (skipPermissions) extraArgs.push('--dangerously-skip-permissions')
       const result = await api.pty.spawn({
         model: model || selectedModel,
         cwd: currentProjectDir || undefined,
+        args: extraArgs.length > 0 ? extraArgs : undefined,
       })
 
       if (result.error || !result.id) {
@@ -595,6 +603,35 @@ export function TerminalPage() {
               {currentProjectDir.split('/').pop()}
             </button>
           )}
+
+          {/* Session flags */}
+          <button
+            onClick={() => setContinueSession(v => !v)}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+              continueSession
+                ? 'bg-accent-blue/10 text-accent-blue border border-accent-blue/20'
+                : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
+            )}
+            title="Resume last conversation with --continue. New tabs will continue where Claude left off."
+          >
+            <History size={12} />
+            {continueSession && <span>Continue</span>}
+          </button>
+
+          <button
+            onClick={() => setSkipPermissions(v => !v)}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+              skipPermissions
+                ? 'bg-accent-red/10 text-accent-red border border-accent-red/20'
+                : 'text-text-muted hover:text-text-secondary hover:bg-bg-tertiary'
+            )}
+            title="Skip permission prompts with --dangerously-skip-permissions. Use with caution in trusted projects."
+          >
+            <ShieldOff size={12} />
+            {skipPermissions && <span>Skip Perms</span>}
+          </button>
 
           <div className="w-px h-5 bg-border mx-1" />
 

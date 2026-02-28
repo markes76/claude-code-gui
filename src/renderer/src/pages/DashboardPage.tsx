@@ -3,11 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import {
   Zap, Bot, Server, Webhook, Activity, Terminal, FileText,
   Settings, FolderOpen, Play, RotateCcw, Trash2, Cpu,
-  RefreshCw, ArrowRight, CheckCircle, AlertCircle, Info, XCircle
+  RefreshCw, ArrowRight, CheckCircle, AlertCircle, Info, XCircle,
+  Stethoscope, Key, FolderSearch
 } from 'lucide-react'
 import { useAppStore } from '../stores/app-store'
 import { StatusBadge } from '../components/shared/StatusBadge'
 import { cn, formatTimestamp, getApi } from '../lib/utils'
+
+interface DiagnosticsInfo {
+  version: string
+  claudePath: string
+  nodePath: string
+  configDir: string
+  hasApiKey: boolean
+}
 
 interface StatCard {
   label: string
@@ -28,6 +37,29 @@ export function DashboardPage() {
     commands: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsInfo | null>(null)
+  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
+
+  const runDiagnostics = useCallback(async () => {
+    const api = getApi()
+    if (!api) return
+    setLoadingDiagnostics(true)
+    setShowDiagnostics(true)
+    try {
+      const info = await api.cli.getInfo()
+      setDiagnostics({
+        version: info.version || 'unknown',
+        claudePath: info.claudePath || info.claudeScript || 'not found',
+        nodePath: info.nodePath || 'not found',
+        configDir: info.configDir || '~/.claude',
+        hasApiKey: !!info.hasApiKey,
+      })
+    } catch {
+      setDiagnostics(null)
+    }
+    setLoadingDiagnostics(false)
+  }, [])
 
   const loadStats = useCallback(async () => {
     const api = getApi()
@@ -117,11 +149,65 @@ export function DashboardPage() {
               label={cliAvailable ? 'Connected' : 'Not Found'}
               pulse={cliAvailable}
             />
+            <button
+              onClick={runDiagnostics}
+              disabled={loadingDiagnostics}
+              className="btn-ghost text-xs gap-1"
+              title="Run diagnostics to check CLI installation, paths, and API key"
+            >
+              {loadingDiagnostics ? <RefreshCw size={14} className="animate-spin" /> : <Stethoscope size={14} />}
+              {!loadingDiagnostics && 'Diagnose'}
+            </button>
             <button onClick={loadStats} className="btn-ghost">
               <RefreshCw size={14} />
             </button>
           </div>
         </div>
+
+        {/* Diagnostics panel */}
+        {showDiagnostics && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-text-secondary">Diagnostics</span>
+              <button onClick={() => setShowDiagnostics(false)} className="text-text-muted hover:text-text-primary text-xs">
+                <XCircle size={14} />
+              </button>
+            </div>
+            {loadingDiagnostics ? (
+              <div className="flex items-center gap-2 text-xs text-text-muted py-2">
+                <RefreshCw size={12} className="animate-spin" />
+                Running diagnostics...
+              </div>
+            ) : diagnostics ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2 py-1.5">
+                  <CheckCircle size={13} className="text-accent-green flex-shrink-0" />
+                  <span className="text-text-muted">Version:</span>
+                  <span className="text-text-primary font-mono">{diagnostics.version}</span>
+                </div>
+                <div className="flex items-center gap-2 py-1.5">
+                  <Key size={13} className={cn('flex-shrink-0', diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow')} />
+                  <span className="text-text-muted">API Key:</span>
+                  <span className={cn('font-medium', diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow')}>
+                    {diagnostics.hasApiKey ? 'Set' : 'Not set (using claude login)'}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 py-1.5 col-span-full md:col-span-1">
+                  <FolderSearch size={13} className="text-accent-blue flex-shrink-0 mt-0.5" />
+                  <span className="text-text-muted flex-shrink-0">CLI path:</span>
+                  <span className="text-text-primary font-mono break-all">{diagnostics.claudePath}</span>
+                </div>
+                <div className="flex items-start gap-2 py-1.5 col-span-full md:col-span-1">
+                  <FolderSearch size={13} className="text-accent-purple flex-shrink-0 mt-0.5" />
+                  <span className="text-text-muted flex-shrink-0">Config dir:</span>
+                  <span className="text-text-primary font-mono break-all">{diagnostics.configDir}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-accent-red">Failed to retrieve diagnostics. Is the CLI installed?</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Grid */}

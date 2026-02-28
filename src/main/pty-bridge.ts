@@ -25,6 +25,7 @@ const ALLOWED_MODELS = [
   'opus', 'sonnet', 'haiku',
   'claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku',
   'claude-sonnet-4-5-20250929', 'claude-opus-4-6',
+  'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
 ]
 
 function shellEscape(arg: string): string {
