@@ -144,20 +144,25 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       if (!existsSync(dir)) return
       const entries = readdirSync(dir)
       for (const entry of entries) {
-        if (entry.endsWith('.md')) {
-          const filePath = join(dir, entry)
-          const content = readFileSync(filePath, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          agents.push({
-            name: frontmatter.name || entry.replace('.md', ''),
-            description: frontmatter.description || '',
-            model: frontmatter.model || 'default',
-            scope,
-            path: filePath,
-            content,
-            frontmatter
-          })
-        }
+        const fullPath = join(dir, entry)
+        try {
+          const stat = statSync(fullPath)
+          if (stat.isDirectory()) {
+            scanDir(fullPath, scope)
+          } else if (entry.endsWith('.md')) {
+            const content = readFileSync(fullPath, 'utf-8')
+            const frontmatter = parseFrontmatter(content)
+            agents.push({
+              name: frontmatter.name || entry.replace('.md', ''),
+              description: frontmatter.description || '',
+              model: frontmatter.model || 'default',
+              scope,
+              path: fullPath,
+              content,
+              frontmatter
+            })
+          }
+        } catch { /* skip unreadable entries */ }
       }
     }
 
@@ -193,23 +198,30 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('config:list-commands', async (_event, projectDir?: string) => {
     const commands: any[] = []
 
-    const scanDir = (dir: string, scope: string) => {
+    // Recursive scan — Claude Code supports subdir commands (e.g. category/cmd.md → /category:cmd)
+    const scanDir = (dir: string, scope: string, prefix = '') => {
       if (!existsSync(dir)) return
       const entries = readdirSync(dir)
       for (const entry of entries) {
-        if (entry.endsWith('.md')) {
-          const filePath = join(dir, entry)
-          const content = readFileSync(filePath, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          commands.push({
-            name: entry.replace('.md', ''),
-            description: frontmatter.description || '',
-            scope,
-            path: filePath,
-            content,
-            frontmatter
-          })
-        }
+        const fullPath = join(dir, entry)
+        try {
+          const stat = statSync(fullPath)
+          if (stat.isDirectory()) {
+            scanDir(fullPath, scope, prefix ? `${prefix}:${entry}` : entry)
+          } else if (entry.endsWith('.md')) {
+            const content = readFileSync(fullPath, 'utf-8')
+            const frontmatter = parseFrontmatter(content)
+            const baseName = entry.replace('.md', '')
+            commands.push({
+              name: prefix ? `${prefix}:${baseName}` : baseName,
+              description: frontmatter.description || '',
+              scope,
+              path: fullPath,
+              content,
+              frontmatter
+            })
+          }
+        } catch { /* skip unreadable entries */ }
       }
     }
 
