@@ -375,6 +375,61 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       return { success: false }
     }
   })
+
+  // ── Plugin Skills ──────────────────────────────────────────
+
+  ipcMain.handle('plugins:scan-skills', async () => {
+    try {
+      const manifestPath = join(claudeDir, 'plugins', 'installed_plugins.json')
+      return scanPluginSkills(manifestPath)
+    } catch {
+      return []
+    }
+  })
+}
+
+// ── Plugin Skills Scanner ──────────────────────────────────────────
+
+function scanPluginSkills(manifestPath: string): Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }> {
+  if (!existsSync(manifestPath)) return []
+  let manifest: any
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+  } catch { return [] }
+  if (!manifest?.plugins || typeof manifest.plugins !== 'object') return []
+
+  const groups: Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }> = []
+
+  for (const [pluginKey, entries] of Object.entries(manifest.plugins) as [string, any][]) {
+    const entry = entries[0]
+    if (!entry?.installPath) continue
+    const { installPath, version } = entry
+    if (!existsSync(installPath)) continue
+    const skillsDir = join(installPath, 'skills')
+    if (!existsSync(skillsDir)) continue
+
+    let subdirs: string[]
+    try {
+      subdirs = readdirSync(skillsDir).sort().filter(d => {
+        try { return statSync(join(skillsDir, d)).isDirectory() } catch { return false }
+      })
+    } catch { continue }
+
+    const skills: Array<{ name: string; description: string; path: string }> = []
+    for (const subdir of subdirs) {
+      const skillFile = join(skillsDir, subdir, 'SKILL.md')
+      if (!existsSync(skillFile)) continue
+      let fields: Record<string, any> = {}
+      try { fields = parseFrontmatter(readFileSync(skillFile, 'utf-8')) } catch {}
+      skills.push({ name: fields.name || subdir, description: fields.description || '', path: skillFile })
+    }
+    if (skills.length === 0) continue
+
+    const pluginName = pluginKey.includes('@') ? pluginKey.split('@')[0] : pluginKey
+    groups.push({ pluginKey, pluginName, version: version || '?', skills })
+  }
+
+  return groups
 }
 
 // ── Utilities ──────────────────────────────────────────

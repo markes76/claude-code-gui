@@ -190,6 +190,17 @@ export function TerminalPage() {
   const containersRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const tabsRef = useRef<Map<string, TerminalTab>>(new Map())
   const cleanupFnsRef = useRef<Map<string, (() => void)[]>>(new Map())
+  const selectedThemeNameRef = useRef(selectedThemeName)
+
+  // Keep ref in sync so createTab always uses the current theme (avoids stale closure)
+  useEffect(() => { selectedThemeNameRef.current = selectedThemeName }, [selectedThemeName])
+
+  // Returns true if the terminal viewport is at or near the bottom of the buffer
+  const isAtBottom = (tab: TerminalTab) => {
+    if (!tab.terminal) return true
+    const buf = tab.terminal.buffer.active
+    return buf.viewportY >= Math.max(0, buf.length - tab.terminal.rows)
+  }
 
   // Create a new terminal tab with optional initial message
   const createTab = useCallback(async (model?: string, initialMessage?: string) => {
@@ -200,7 +211,7 @@ export function TerminalPage() {
     const tabNum = tabs.length + 1
 
     const terminal = new Terminal({
-      theme: TERMINAL_THEMES[selectedThemeName] || TERMINAL_THEMES['Dark'],
+      theme: TERMINAL_THEMES[selectedThemeNameRef.current] || TERMINAL_THEMES['Dark'],
       fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, monospace',
       fontSize: 13,
       lineHeight: 1.4,
@@ -531,13 +542,17 @@ export function TerminalPage() {
     }
   }, [activeTabId])
 
-  // Window resize → fit active terminal
+  // Window resize → fit active terminal (preserve viewport position)
   useEffect(() => {
     const handleResize = () => {
       if (activeTabId) {
         const tab = tabsRef.current.get(activeTabId)
         if (tab?.fitAddon && tab.terminal) {
-          try { tab.fitAddon.fit(); tab.terminal.scrollToBottom() } catch { /* ignore */ }
+          try {
+            const wasAtBottom = isAtBottom(tab)
+            tab.fitAddon.fit()
+            if (wasAtBottom) tab.terminal.scrollToBottom()
+          } catch { /* ignore */ }
         }
       }
     }
@@ -561,7 +576,11 @@ export function TerminalPage() {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon && tab.terminal) {
         setTimeout(() => {
-          try { tab.fitAddon!.fit(); tab.terminal!.scrollToBottom() } catch { /* ignore */ }
+          try {
+            const wasAtBottom = isAtBottom(tab)
+            tab.fitAddon!.fit()
+            if (wasAtBottom) tab.terminal!.scrollToBottom()
+          } catch { /* ignore */ }
           tab.terminal!.focus()
         }, 50)
       }
@@ -577,13 +596,17 @@ export function TerminalPage() {
     }
   }, [isVisible, pendingSessionMemory, cliAvailable]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refit terminal when composer opens/closes (changes available height)
+  // Refit terminal when composer opens/closes (preserve viewport position)
   useEffect(() => {
     if (activeTabId) {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon) {
         setTimeout(() => {
-          try { tab.fitAddon!.fit(); tab.terminal?.scrollToBottom() } catch { /* ignore */ }
+          try {
+            const wasAtBottom = isAtBottom(tab)
+            tab.fitAddon!.fit()
+            if (wasAtBottom) tab.terminal?.scrollToBottom()
+          } catch { /* ignore */ }
         }, 100)
       }
     }
@@ -791,7 +814,7 @@ export function TerminalPage() {
           <div className="relative">
             <button
               onClick={() => setShowThemePicker(!showThemePicker)}
-              className="flex items-center gap-1 px-2 py-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded border border-border text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
               title={`Terminal theme: ${selectedThemeName}`}
             >
               <Palette size={13} />

@@ -103,6 +103,11 @@ const api = {
     delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
   },
 
+  // Plugins
+  plugins: {
+    scanSkills: () => ipcRenderer.invoke('plugins:scan-skills'),
+  },
+
   // Window controls
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),

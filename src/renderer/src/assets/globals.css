@@ -16,7 +16,7 @@
   --scrollbar-thumb: #cbd5e1;
   --scrollbar-hover: #94a3b8;
   --selection-bg: rgba(255, 107, 53, 0.2);
-  --card-shadow: 0 1px 4px 0 rgba(0,0,0,0.07), 0 1px 2px 0 rgba(0,0,0,0.04);
+  --card-shadow: 0 1px 8px 0 rgba(0,0,0,0.12), 0 1px 3px 0 rgba(0,0,0,0.08);
 }
 
 /* Dark mode */
@@ -127,6 +127,11 @@
   .page-title {
     @apply text-2xl font-heading font-bold text-text-primary mb-6;
   }
+}
+
+/* Light mode: make cards visually distinct from near-white page background */
+:root .card, :root .card-hover {
+  border-color: #b2c0d4;
 }
 
 /* Light mode: increase badge background opacity for better visibility */

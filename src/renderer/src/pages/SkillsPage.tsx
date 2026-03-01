@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Zap, Plus, Edit3, Trash2, Eye, Search, FolderOpen, Save } from 'lucide-react'
+import { Zap, Plus, Edit3, Trash2, Eye, Search, FolderOpen, Save, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn, getApi, parseFrontmatter, buildFrontmatter } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
@@ -24,6 +24,8 @@ export function SkillsPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [editingSkill, setEditingSkill] = useState<SkillInfo | null>(null)
   const [showEditor, setShowEditor] = useState(false)
+  const [pluginGroups, setPluginGroups] = useState<Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }>>([])
+  const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(new Set())
 
   // Wizard state
   const [wizardStep, setWizardStep] = useState(0)
@@ -45,12 +47,40 @@ export function SkillsPage() {
     setLoading(false)
   }, [currentProjectDir])
 
-  useEffect(() => { loadSkills() }, [loadSkills])
+  const loadPluginSkills = useCallback(async () => {
+    const api = getApi() as any
+    if (!api?.plugins?.scanSkills) return
+    try {
+      const groups = await api.plugins.scanSkills()
+      setPluginGroups(groups || [])
+    } catch { }
+  }, [])
+
+  useEffect(() => { loadSkills(); loadPluginSkills() }, [loadSkills, loadPluginSkills])
 
   const filtered = skills.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.description.toLowerCase().includes(search.toLowerCase())
   )
+
+  const filteredPluginGroups = pluginGroups.map(group => ({
+    ...group,
+    skills: group.skills.filter(s =>
+      !search ||
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase())
+    )
+  })).filter(group => group.skills.length > 0)
+
+  const pluginTotalCounts = Object.fromEntries(pluginGroups.map(g => [g.pluginKey, g.skills.length]))
+
+  const togglePlugin = (pluginKey: string) => {
+    setExpandedPlugins(prev => {
+      const next = new Set(prev)
+      next.has(pluginKey) ? next.delete(pluginKey) : next.add(pluginKey)
+      return next
+    })
+  }
 
   const resetWizard = () => {
     setWizardStep(0)
@@ -189,6 +219,54 @@ export function SkillsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Plugin Skills */}
+        {filteredPluginGroups.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Plugin Skills</h2>
+            <div className="space-y-2">
+              {filteredPluginGroups.map(group => {
+                const isExpanded = expandedPlugins.has(group.pluginKey) || !!search
+                return (
+                  <div key={group.pluginKey} className="card overflow-hidden p-0 rounded-lg">
+                    <button
+                      onClick={() => togglePlugin(group.pluginKey)}
+                      aria-expanded={isExpanded}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-bg-tertiary transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-text-primary">{group.pluginName}</span>
+                        <span className="text-xs text-text-muted font-mono">v{group.version}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted tabular-nums">
+                          {pluginTotalCounts[group.pluginKey] ?? group.skills.length} skill{(pluginTotalCounts[group.pluginKey] ?? group.skills.length) !== 1 ? 's' : ''}
+                        </span>
+                        {isExpanded
+                          ? <ChevronDown className="w-4 h-4 text-text-muted" />
+                          : <ChevronRight className="w-4 h-4 text-text-muted" />
+                        }
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <ul className="border-t border-border divide-y divide-border">
+                        {group.skills.map(skill => (
+                          <li key={skill.path} className="px-4 py-2 flex items-start gap-2">
+                            <span className="text-text-muted mt-0.5 text-xs">•</span>
+                            <div>
+                              <span className="text-sm text-text-secondary font-medium">{skill.name}</span>
+                              {skill.description && <p className="text-xs text-text-muted mt-0.5">{skill.description}</p>}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
