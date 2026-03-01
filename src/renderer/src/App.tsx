@@ -23,6 +23,7 @@ import { DocsPage } from './pages/DocsPage'
 import { ApiKeysPage } from './pages/ApiKeysPage'
 import { MemoryPage } from './pages/MemoryPage'
 import { RulesPage } from './pages/RulesPage'
+import { AgentDesignPage } from './pages/AgentDesignPage'
 
 export default function App() {
   const { initialize } = useClaudeApi()
@@ -66,6 +67,7 @@ export default function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/skills" element={<SkillsPage />} />
               <Route path="/agents" element={<AgentsPage />} />
+              <Route path="/agent-design" element={<AgentDesignPage />} />
               <Route path="/commands" element={<CommandsPage />} />
               <Route path="/hooks" element={<HooksPage />} />
               <Route path="/mcp" element={<McpPage />} />

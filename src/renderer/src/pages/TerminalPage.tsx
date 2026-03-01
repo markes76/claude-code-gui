@@ -11,6 +11,14 @@ import { useLocation } from 'react-router-dom'
 import 'xterm/css/xterm.css'
 import { cn, getApi } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
+import { useMissionStore } from '../stores/mission-store'
+import { useAgentVisualStore } from '../stores/agent-visual-store'
+import { parseTerminalChunk, resetParserBuffer } from '../lib/terminal-parser'
+import { MissionFeed } from '../components/terminal/MissionFeed'
+import { RawTerminalToggle } from '../components/terminal/RawTerminalToggle'
+import { CommandBar } from '../components/layout/CommandBar'
+import { IntelPanel } from '../components/layout/IntelPanel'
+import { StatusBar as HudStatusBar } from '../components/layout/StatusBar'
 import { Modal } from '../components/shared/Modal'
 
 interface TerminalTab {
@@ -69,12 +77,20 @@ function extractBufferText(terminal: Terminal): string {
 
 export function TerminalPage() {
   const { cliAvailable, currentProjectDir, setCurrentProjectDir, pendingSessionMemory, setPendingSessionMemory, addActivity } = useAppStore()
+  const addMissionEvent = useMissionStore((s) => s.addEvent)
+  const setActiveToolName = useMissionStore((s) => s.setActiveToolName)
+  const setActiveFileName = useMissionStore((s) => s.setActiveFileName)
+  const showRawTerminal = useMissionStore((s) => s.showRawTerminal)
+  const setSessionStartTime = useMissionStore((s) => s.setSessionStartTime)
+  const setClaudeActivity = useAgentVisualStore((s) => s.setClaudeActivity)
+  const setAgentActivity = useAgentVisualStore((s) => s.setAgentActivity)
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('claude-gui-model') || 'opus')
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [continueSession, setContinueSession] = useState(false)
   const [skipPermissions, setSkipPermissions] = useState(false)
+  const [intelCollapsed, setIntelCollapsed] = useState(false)
 
   // Save Memory modal state
   const [showSaveMemory, setShowSaveMemory] = useState(false)
@@ -94,6 +110,17 @@ export function TerminalPage() {
   const containersRef = useRef<Map<string, HTMLDivElement>>(new Map())
   const tabsRef = useRef<Map<string, TerminalTab>>(new Map())
   const cleanupFnsRef = useRef<Map<string, (() => void)[]>>(new Map())
+
+  // Scroll-preserving fit: saves xterm viewport scroll position before fit, restores after
+  const safeFit = useCallback((tab: TerminalTab) => {
+    if (!tab.fitAddon || !tab.terminal) return
+    const viewport = tab.terminal.element?.querySelector('.xterm-viewport')
+    const scrollTop = viewport?.scrollTop ?? 0
+    try { tab.fitAddon.fit() } catch { /* ignore */ }
+    requestAnimationFrame(() => {
+      if (viewport) viewport.scrollTop = scrollTop
+    })
+  }, [])
 
   // Create a new terminal tab with optional initial message
   const createTab = useCallback(async (model?: string, initialMessage?: string) => {
@@ -158,18 +185,48 @@ export function TerminalPage() {
       }
 
       tab.ptyId = result.id
+      setSessionStartTime(Date.now())
+      setClaudeActivity({ status: 'working' })
+      resetParserBuffer()
 
       // Wire xterm input → PTY
       const inputDispose = terminal.onData((data) => {
         if (tab.ptyId) {
           api.pty.write(tab.ptyId, data)
+          // Feed user input to mission feed
+          addMissionEvent(tabId, { type: 'user_input', label: 'User input', status: 'completed' })
         }
       })
 
-      // Wire PTY output → xterm
+      // Wire PTY output → xterm + Mission Feed parser
       const removeDataListener = api.pty.onData((payload: any) => {
         if (payload.id === tab.ptyId) {
           terminal.write(payload.data)
+          // Parse output for Mission Feed
+          try {
+            const events = parseTerminalChunk(payload.data)
+            for (const evt of events) {
+              addMissionEvent(tabId, evt)
+              // Update HUD state based on parsed events
+              if (evt.type === 'tool_use' || evt.type === 'file_read' || evt.type === 'file_write' || evt.type === 'bash_exec') {
+                setActiveToolName(evt.label.split(' ')[0] || null)
+                if (evt.detail) setActiveFileName(evt.detail)
+                setClaudeActivity({ status: 'working', currentTask: evt.label })
+              } else if (evt.type === 'thinking') {
+                setClaudeActivity({ status: 'thinking' })
+              } else if (evt.type === 'agent_spawn' && evt.agentName) {
+                setAgentActivity(evt.agentName, { status: 'working', currentTask: evt.label, startTime: Date.now() })
+              } else if (evt.type === 'agent_complete' && evt.agentName) {
+                setAgentActivity(evt.agentName, { status: 'done' })
+              } else if (evt.type === 'error') {
+                setClaudeActivity({ status: 'error' })
+              }
+            }
+            if (events.length === 0) {
+              // No structured events — Claude is outputting text
+              setClaudeActivity({ status: 'working' })
+            }
+          } catch { /* parser should never break the terminal */ }
         }
       })
 
@@ -181,6 +238,9 @@ export function TerminalPage() {
           tab.dead = true
           tab.ptyId = null
           setTabs(prev => prev.map(t => t.id === tabId ? { ...t, dead: true, ptyId: null } : t))
+          setClaudeActivity({ status: 'idle' })
+          setActiveToolName(null)
+          setActiveFileName(null)
         }
       })
 
@@ -427,25 +487,26 @@ export function TerminalPage() {
     if (activeTabId) {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon && tab.terminal) {
-        try { tab.fitAddon.fit() } catch { /* ignore */ }
-        tab.terminal.focus()
+        // Let the browser finish display:block layout pass before fitting
+        requestAnimationFrame(() => {
+          safeFit(tab)
+          tab.terminal!.focus()
+        })
       }
     }
-  }, [activeTabId])
+  }, [activeTabId, safeFit])
 
   // Window resize → fit active terminal
   useEffect(() => {
     const handleResize = () => {
       if (activeTabId) {
         const tab = tabsRef.current.get(activeTabId)
-        if (tab?.fitAddon) {
-          try { tab.fitAddon.fit() } catch { /* ignore */ }
-        }
+        if (tab) safeFit(tab)
       }
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [activeTabId])
+  }, [activeTabId, safeFit])
 
   // Auto-create first tab on mount
   useEffect(() => {
@@ -463,12 +524,12 @@ export function TerminalPage() {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon && tab.terminal) {
         setTimeout(() => {
-          try { tab.fitAddon!.fit() } catch { /* ignore */ }
+          safeFit(tab)
           tab.terminal!.focus()
         }, 50)
       }
     }
-  }, [isVisible, activeTabId])
+  }, [isVisible, activeTabId, safeFit])
 
   // Handle pending session memory from SessionsPage → create new tab with context
   useEffect(() => {
@@ -483,13 +544,11 @@ export function TerminalPage() {
   useEffect(() => {
     if (activeTabId) {
       const tab = tabsRef.current.get(activeTabId)
-      if (tab?.fitAddon) {
-        setTimeout(() => {
-          try { tab.fitAddon!.fit() } catch { /* ignore */ }
-        }, 100)
+      if (tab) {
+        setTimeout(() => safeFit(tab), 100)
       }
     }
-  }, [showComposer, activeTabId])
+  }, [showComposer, activeTabId, safeFit])
 
   const activeTab = tabs.find(t => t.id === activeTabId)
   const displayText = isEnhanced ? enhancedText : promptText
@@ -514,7 +573,7 @@ export function TerminalPage() {
   // Gate: must select a project directory before using the terminal
   if (!currentProjectDir) {
     return (
-      <div className="flex flex-col h-full bg-[#0a0a0f] items-center justify-center">
+      <div className="flex flex-col h-full bg-bg-primary items-center justify-center">
         <div className="max-w-md w-full space-y-6 px-6">
           <div className="text-center space-y-2">
             <TermIcon size={40} className="mx-auto text-accent-orange opacity-80" />
@@ -559,7 +618,16 @@ export function TerminalPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]">
+    <div className="flex h-full bg-[#0a0a0f]">
+      {/* Main terminal column */}
+      <div className="flex-1 flex flex-col min-w-0">
+      {/* Command Bar HUD */}
+      <CommandBar
+        visible={true}
+        model={MODELS.find(m => m.id === selectedModel)?.label || selectedModel}
+        connected={!!activeTab && !activeTab.dead && !!activeTab.ptyId}
+      />
+
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-bg-secondary">
         <div className="flex items-center gap-2">
@@ -632,6 +700,11 @@ export function TerminalPage() {
             <ShieldOff size={12} />
             {skipPermissions && <span>Skip Perms</span>}
           </button>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {/* Mission/Raw toggle */}
+          <RawTerminalToggle />
 
           <div className="w-px h-5 bg-border mx-1" />
 
@@ -721,8 +794,9 @@ export function TerminalPage() {
         </button>
       </div>
 
-      {/* Terminal area */}
+      {/* Terminal area — Mission Feed (primary) or Raw Terminal (toggle) */}
       <div className="flex-1 relative overflow-hidden">
+        {/* Raw xterm containers — always mounted, conditionally visible */}
         {tabs.map(tab => (
           <div
             key={tab.id}
@@ -730,20 +804,29 @@ export function TerminalPage() {
               if (el) containersRef.current.set(tab.id, el)
             }}
             className="absolute inset-0 p-1"
-            style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
+            style={{
+              display: showRawTerminal && tab.id === activeTabId ? 'block' : 'none'
+            }}
           />
         ))}
+
+        {/* Mission Feed — shown when not in raw mode */}
+        {!showRawTerminal && activeTabId && (
+          <div className="absolute inset-0">
+            <MissionFeed tabId={activeTabId} />
+          </div>
+        )}
 
         {tabs.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <TermIcon size={40} className="text-text-muted mx-auto mb-3 opacity-50" />
-              <p className="text-text-muted text-sm mb-3">
-                {cliAvailable ? 'Starting Claude...' : 'Claude Code CLI not found'}
+              <p className="text-text-muted text-sm mb-3 font-mono">
+                {cliAvailable ? 'INITIALIZING MISSION CONTROL...' : 'CLAUDE CODE CLI NOT FOUND'}
               </p>
               {!cliAvailable && (
-                <p className="text-text-muted text-xs">
-                  Install Claude Code CLI: npm install -g @anthropic-ai/claude-code
+                <p className="text-text-muted text-xs font-mono">
+                  Install: npm install -g @anthropic-ai/claude-code
                 </p>
               )}
             </div>
@@ -910,6 +993,27 @@ export function TerminalPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Status Bar */}
+      <HudStatusBar
+        visible={true}
+        connected={!!activeTab && !activeTab.dead && !!activeTab.ptyId}
+        model={MODELS.find(m => m.id === selectedModel)?.label || selectedModel}
+        onCompose={() => {
+          setShowComposer(!showComposer)
+          if (!showComposer) setTimeout(() => composerRef.current?.focus(), 100)
+        }}
+        onSaveMemory={handleSaveMemory}
+        canCompose={!!activeTab && !activeTab.dead && !!activeTab.ptyId}
+      />
+      </div>{/* end main terminal column */}
+
+      {/* Intel Panel (right sidebar) */}
+      <IntelPanel
+        visible={!!activeTab && !activeTab.dead}
+        collapsed={intelCollapsed}
+        onToggle={() => setIntelCollapsed(v => !v)}
+      />
     </div>
   )
 }

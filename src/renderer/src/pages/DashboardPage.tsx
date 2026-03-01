@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Zap, Bot, Server, Webhook, Activity, Terminal, FileText,
-  Settings, FolderOpen, Play, RotateCcw, Trash2, Cpu,
-  RefreshCw, ArrowRight, CheckCircle, AlertCircle, Info, XCircle,
-  Stethoscope, Key, FolderSearch
+  Zap, Bot, Server, Webhook, Terminal, FileText,
+  Settings, Cpu, RefreshCw, ArrowRight, CheckCircle,
+  AlertCircle, Info, XCircle, Stethoscope, Key, FolderSearch,
+  Shield, Radio, Crosshair, Palette
 } from 'lucide-react'
 import { useAppStore } from '../stores/app-store'
 import { StatusBadge } from '../components/shared/StatusBadge'
@@ -23,12 +23,13 @@ interface StatCard {
   value: number | string
   icon: React.ReactNode
   color: string
+  bgColor: string
   path: string
 }
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { cliAvailable, cliInfo, claudePaths, activities, addActivity } = useAppStore()
+  const { cliAvailable, cliInfo, activities, addActivity } = useAppStore()
   const [stats, setStats] = useState({
     skills: 0,
     agents: 0,
@@ -85,7 +86,7 @@ export function DashboardPage() {
         hooks: hookCount,
         commands: commands?.length || 0,
       })
-    } catch (e) {
+    } catch {
       // stats stay at 0
     }
     setLoading(false)
@@ -96,181 +97,201 @@ export function DashboardPage() {
   }, [loadStats])
 
   const statCards: StatCard[] = [
-    { label: 'Skills', value: stats.skills, icon: <Zap size={20} />, color: 'text-accent-orange', path: '/skills' },
-    { label: 'Subagents', value: stats.agents, icon: <Bot size={20} />, color: 'text-accent-purple', path: '/agents' },
-    { label: 'MCP Servers', value: stats.mcpServers, icon: <Server size={20} />, color: 'text-accent-blue', path: '/mcp' },
-    { label: 'Hooks', value: stats.hooks, icon: <Webhook size={20} />, color: 'text-accent-cyan', path: '/hooks' },
-    { label: 'Commands', value: stats.commands, icon: <Terminal size={20} />, color: 'text-accent-green', path: '/commands' },
+    { label: 'ABILITIES', value: stats.skills, icon: <Zap size={18} />, color: 'text-accent-orange', bgColor: 'bg-accent-orange/10', path: '/skills' },
+    { label: 'UNITS', value: stats.agents, icon: <Bot size={18} />, color: 'text-accent-purple', bgColor: 'bg-accent-purple/10', path: '/agents' },
+    { label: 'UPLINKS', value: stats.mcpServers, icon: <Server size={18} />, color: 'text-accent-blue', bgColor: 'bg-accent-blue/10', path: '/mcp' },
+    { label: 'RELAYS', value: stats.hooks, icon: <Webhook size={18} />, color: 'text-accent-cyan', bgColor: 'bg-accent-cyan/10', path: '/hooks' },
+    { label: 'DIRECTIVES', value: stats.commands, icon: <Terminal size={18} />, color: 'text-accent-green', bgColor: 'bg-accent-green/10', path: '/commands' },
   ]
 
-  const quickActions = [
-    { label: 'Open Terminal', icon: <Terminal size={18} />, path: '/terminal', desc: 'Start a Claude Code session' },
-    { label: 'Edit CLAUDE.md', icon: <FileText size={18} />, path: '/claude-md', desc: 'Configure project context' },
-    { label: 'Manage Settings', icon: <Settings size={18} />, path: '/settings', desc: 'Adjust preferences' },
-    { label: 'Add Skill', icon: <Zap size={18} />, path: '/skills', desc: 'Create a new skill' },
-    { label: 'Add MCP Server', icon: <Server size={18} />, path: '/mcp', desc: 'Connect a new server' },
-    { label: 'Manage Hooks', icon: <Webhook size={18} />, path: '/hooks', desc: 'Configure event hooks' },
+  const deployActions = [
+    { label: 'Launch Terminal', icon: <Crosshair size={16} />, path: '/terminal', desc: 'Deploy Claude Code session', accent: 'accent-orange' },
+    { label: 'Mission Brief', icon: <FileText size={16} />, path: '/claude-md', desc: 'Edit CLAUDE.md context', accent: 'accent-blue' },
+    { label: 'Agent Design', icon: <Palette size={16} />, path: '/agent-design', desc: 'Customize agent avatars', accent: 'accent-purple' },
+    { label: 'Deploy Ability', icon: <Zap size={16} />, path: '/skills', desc: 'Create a new skill', accent: 'accent-orange' },
+    { label: 'Add Uplink', icon: <Server size={16} />, path: '/mcp', desc: 'Connect MCP server', accent: 'accent-cyan' },
+    { label: 'Configure', icon: <Settings size={16} />, path: '/settings', desc: 'System preferences', accent: 'accent-green' },
   ]
 
   const activityIcon = (status: string) => {
     switch (status) {
-      case 'success': return <CheckCircle size={14} className="text-accent-green" />
-      case 'error': return <XCircle size={14} className="text-accent-red" />
-      case 'warning': return <AlertCircle size={14} className="text-accent-yellow" />
-      default: return <Info size={14} className="text-accent-blue" />
+      case 'success': return <CheckCircle size={12} className="text-accent-green" />
+      case 'error': return <XCircle size={12} className="text-accent-red" />
+      case 'warning': return <AlertCircle size={12} className="text-accent-yellow" />
+      default: return <Info size={12} className="text-accent-blue" />
     }
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* System Status */}
-      <div className="card">
+      {/* Mission Briefing Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-[10px] font-mono font-bold tracking-[0.3em] text-text-muted uppercase">
+            Mission Briefing
+          </div>
+          <div className="h-px flex-1 bg-border min-w-[40px]" />
+        </div>
+        <button onClick={loadStats} className="btn-ghost text-xs">
+          <RefreshCw size={12} /> Refresh Intel
+        </button>
+      </div>
+
+      {/* Base Status */}
+      <div className="hud-panel p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center',
-              cliAvailable ? 'bg-accent-green/10' : 'bg-accent-red/10'
+              'w-11 h-11 rounded-xl flex items-center justify-center border',
+              cliAvailable
+                ? 'bg-accent-green/10 border-accent-green/20'
+                : 'bg-accent-red/10 border-accent-red/20'
             )}>
-              <Cpu size={20} className={cliAvailable ? 'text-accent-green' : 'text-accent-red'} />
+              <Radio size={20} className={cn(
+                cliAvailable ? 'text-accent-green' : 'text-accent-red',
+                cliAvailable && 'animate-pulse'
+              )} />
             </div>
             <div>
-              <h3 className="text-sm font-heading font-semibold">System Status</h3>
-              <p className="text-xs text-text-secondary">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold tracking-wider text-text-muted">BASE STATUS</span>
+                <StatusBadge
+                  status={cliAvailable ? 'connected' : 'error'}
+                  label={cliAvailable ? 'ONLINE' : 'OFFLINE'}
+                  pulse={cliAvailable}
+                />
+              </div>
+              <p className="text-sm font-medium text-text-primary mt-1">
                 {cliAvailable
-                  ? `Claude Code ${cliInfo?.version || ''} connected`
-                  : 'Claude Code CLI not found. Please install it first.'
+                  ? `Claude Code v${cliInfo?.version || '?'} — All systems operational`
+                  : 'Claude Code CLI not detected. Install to begin operations.'
                 }
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <StatusBadge
-              status={cliAvailable ? 'connected' : 'error'}
-              label={cliAvailable ? 'Connected' : 'Not Found'}
-              pulse={cliAvailable}
-            />
-            <button
-              onClick={runDiagnostics}
-              disabled={loadingDiagnostics}
-              className="btn-ghost text-xs gap-1"
-              title="Run diagnostics to check CLI installation, paths, and API key"
-            >
-              {loadingDiagnostics ? <RefreshCw size={14} className="animate-spin" /> : <Stethoscope size={14} />}
-              {!loadingDiagnostics && 'Diagnose'}
-            </button>
-            <button onClick={loadStats} className="btn-ghost">
-              <RefreshCw size={14} />
-            </button>
-          </div>
+          <button
+            onClick={runDiagnostics}
+            disabled={loadingDiagnostics}
+            className="btn-ghost text-xs"
+          >
+            {loadingDiagnostics ? <RefreshCw size={14} className="animate-spin" /> : <Stethoscope size={14} />}
+            Diagnose
+          </button>
         </div>
 
         {/* Diagnostics panel */}
         {showDiagnostics && (
-          <div className="mt-4 pt-4 border-t border-border">
+          <div className="mt-4 pt-4 border-t border-border/50">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-text-secondary">Diagnostics</span>
-              <button onClick={() => setShowDiagnostics(false)} className="text-text-muted hover:text-text-primary text-xs">
+              <span className="text-[10px] font-mono tracking-wider text-text-muted">SYSTEM DIAGNOSTICS</span>
+              <button onClick={() => setShowDiagnostics(false)} className="text-text-muted hover:text-text-primary">
                 <XCircle size={14} />
               </button>
             </div>
             {loadingDiagnostics ? (
               <div className="flex items-center gap-2 text-xs text-text-muted py-2">
                 <RefreshCw size={12} className="animate-spin" />
-                Running diagnostics...
+                Scanning systems...
               </div>
             ) : diagnostics ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center gap-2 py-1.5">
-                  <CheckCircle size={13} className="text-accent-green flex-shrink-0" />
-                  <span className="text-text-muted">Version:</span>
+                  <CheckCircle size={12} className="text-accent-green" />
+                  <span className="text-text-muted font-mono">VER:</span>
                   <span className="text-text-primary font-mono">{diagnostics.version}</span>
                 </div>
                 <div className="flex items-center gap-2 py-1.5">
-                  <Key size={13} className={cn('flex-shrink-0', diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow')} />
-                  <span className="text-text-muted">API Key:</span>
-                  <span className={cn('font-medium', diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow')}>
-                    {diagnostics.hasApiKey ? 'Set' : 'Not set (using claude login)'}
+                  <Key size={12} className={diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow'} />
+                  <span className="text-text-muted font-mono">KEY:</span>
+                  <span className={cn('font-mono', diagnostics.hasApiKey ? 'text-accent-green' : 'text-accent-yellow')}>
+                    {diagnostics.hasApiKey ? 'ACTIVE' : 'NOT SET'}
                   </span>
                 </div>
-                <div className="flex items-start gap-2 py-1.5 col-span-full md:col-span-1">
-                  <FolderSearch size={13} className="text-accent-blue flex-shrink-0 mt-0.5" />
-                  <span className="text-text-muted flex-shrink-0">CLI path:</span>
-                  <span className="text-text-primary font-mono break-all">{diagnostics.claudePath}</span>
+                <div className="flex items-start gap-2 py-1.5">
+                  <FolderSearch size={12} className="text-accent-blue mt-0.5" />
+                  <span className="text-text-muted font-mono">PATH:</span>
+                  <span className="text-text-primary font-mono text-[11px] break-all">{diagnostics.claudePath}</span>
                 </div>
-                <div className="flex items-start gap-2 py-1.5 col-span-full md:col-span-1">
-                  <FolderSearch size={13} className="text-accent-purple flex-shrink-0 mt-0.5" />
-                  <span className="text-text-muted flex-shrink-0">Config dir:</span>
-                  <span className="text-text-primary font-mono break-all">{diagnostics.configDir}</span>
+                <div className="flex items-start gap-2 py-1.5">
+                  <FolderSearch size={12} className="text-accent-purple mt-0.5" />
+                  <span className="text-text-muted font-mono">CONF:</span>
+                  <span className="text-text-primary font-mono text-[11px] break-all">{diagnostics.configDir}</span>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-accent-red">Failed to retrieve diagnostics. Is the CLI installed?</p>
+              <p className="text-xs text-accent-red font-mono">DIAGNOSTICS FAILED — CLI unreachable</p>
             )}
           </div>
         )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {statCards.map((card) => (
-          <button
-            key={card.label}
-            onClick={() => navigate(card.path)}
-            className="card-hover text-left group"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className={cn('opacity-70 group-hover:opacity-100 transition-opacity', card.color)}>
-                {card.icon}
-              </span>
-              <ArrowRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-            <div className="text-2xl font-heading font-bold text-text-primary">
-              {loading ? '...' : card.value}
-            </div>
-            <div className="text-xs text-text-secondary mt-0.5">{card.label}</div>
-          </button>
-        ))}
+      {/* Tactical Readouts */}
+      <div>
+        <div className="text-[10px] font-mono font-bold tracking-[0.2em] text-text-muted mb-3">TACTICAL READOUT</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {statCards.map((card) => (
+            <button
+              key={card.label}
+              onClick={() => navigate(card.path)}
+              className="hud-panel p-4 text-left group hover:border-border transition-all"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', card.bgColor)}>
+                  <span className={card.color}>{card.icon}</span>
+                </div>
+                <ArrowRight size={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="text-2xl font-heading font-bold text-text-primary tabular-nums">
+                {loading ? '—' : card.value}
+              </div>
+              <div className="text-[10px] font-mono tracking-wider text-text-muted mt-1">{card.label}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
+        {/* Deploy Actions */}
         <div className="lg:col-span-2">
-          <h3 className="section-title">Quick Actions</h3>
+          <div className="text-[10px] font-mono font-bold tracking-[0.2em] text-text-muted mb-3">DEPLOY</div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {quickActions.map((action) => (
+            {deployActions.map((action) => (
               <button
                 key={action.label}
                 onClick={() => navigate(action.path)}
-                className="card-hover text-left group"
+                className="hud-panel p-4 text-left group hover:border-border transition-all"
               >
                 <div className={cn(
-                  'w-9 h-9 rounded-lg bg-bg-tertiary flex items-center justify-center mb-3',
-                  'text-text-muted group-hover:text-accent-orange group-hover:bg-accent-orange/10 transition-all'
+                  'w-8 h-8 rounded-lg flex items-center justify-center mb-3',
+                  'bg-bg-tertiary text-text-muted',
+                  `group-hover:bg-${action.accent}/10 group-hover:text-${action.accent}`,
+                  'transition-all'
                 )}>
                   {action.icon}
                 </div>
                 <div className="text-sm font-medium text-text-primary">{action.label}</div>
-                <div className="text-xs text-text-muted mt-0.5">{action.desc}</div>
+                <div className="text-[11px] text-text-muted mt-0.5">{action.desc}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Comms Log */}
         <div>
-          <h3 className="section-title">Recent Activity</h3>
-          <div className="card space-y-1 max-h-[300px] overflow-y-auto">
+          <div className="text-[10px] font-mono font-bold tracking-[0.2em] text-text-muted mb-3">COMMS LOG</div>
+          <div className="hud-panel p-3 space-y-0.5 max-h-[320px] overflow-y-auto">
             {activities.length === 0 ? (
-              <div className="text-center py-8 text-text-muted text-sm">
-                No recent activity
+              <div className="text-center py-8">
+                <div className="text-text-muted text-[10px] font-mono tracking-wider">NO TRANSMISSIONS</div>
+                <p className="text-xs text-text-muted mt-1">Activity will appear here</p>
               </div>
             ) : (
-              activities.slice(0, 15).map((item) => (
-                <div key={item.id} className="flex items-start gap-2 py-2 px-1">
+              activities.slice(0, 20).map((item) => (
+                <div key={item.id} className="flex items-start gap-2 py-1.5 px-1 rounded hover:bg-bg-tertiary/50 transition-colors">
                   <span className="mt-0.5 flex-shrink-0">{activityIcon(item.status)}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-text-primary truncate">{item.message}</p>
-                    <p className="text-[10px] text-text-muted">{formatTimestamp(item.timestamp)}</p>
+                    <p className="text-[11px] text-text-primary truncate">{item.message}</p>
+                    <p className="text-[9px] text-text-muted font-mono">{formatTimestamp(item.timestamp)}</p>
                   </div>
                 </div>
               ))

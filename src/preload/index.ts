@@ -61,6 +61,14 @@ const api = {
       ipcRenderer.invoke('config:save-mcp-server', options),
     deleteMcpServer: (name: string, scope: string, projectDir?: string) =>
       ipcRenderer.invoke('config:delete-mcp-server', name, scope, projectDir),
+    getAgentVisuals: () =>
+      ipcRenderer.invoke('config:get-agent-visuals'),
+    saveAgentVisuals: (data: any) =>
+      ipcRenderer.invoke('config:save-agent-visuals', data),
+    getVoiceConfig: () =>
+      ipcRenderer.invoke('config:get-voice-config'),
+    saveVoiceConfig: (data: any) =>
+      ipcRenderer.invoke('config:save-voice-config', data),
   },
 
   // Environment Variables

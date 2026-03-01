@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Terminal, FileText, Settings, Zap, Bot,
   Command, Webhook, Server, Plug, Shield, History,
   FolderOpen, HelpCircle, ChevronLeft, ChevronRight,
-  Sparkles, Key, Sun, Moon, Brain, BookOpen
+  Sparkles, Key, Sun, Moon, Brain, BookOpen, Palette
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../stores/app-store'
@@ -45,6 +45,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'skills', label: 'Skills', icon: <Zap size={18} />, path: '/skills' },
       { id: 'agents', label: 'Subagents', icon: <Bot size={18} />, path: '/agents' },
+      { id: 'agent-design', label: 'Agent Design', icon: <Palette size={18} />, path: '/agent-design' },
       { id: 'commands', label: 'Commands', icon: <Command size={18} />, path: '/commands' },
       { id: 'hooks', label: 'Hooks', icon: <Webhook size={18} />, path: '/hooks' },
       { id: 'mcp', label: 'MCP Servers', icon: <Server size={18} />, path: '/mcp' },

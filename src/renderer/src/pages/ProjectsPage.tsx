@@ -489,7 +489,7 @@ export function ProjectsPage() {
                         ) : (
                           <span className="badge bg-bg-tertiary text-text-muted text-[10px]"><X size={10} /> Missing</span>
                         )}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => goTo(item.navigateTo, item.onNavigate)}
                             className="btn-ghost text-[10px] px-2 py-1"

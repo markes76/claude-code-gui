@@ -152,7 +152,7 @@ export function CommandsPage() {
                   <span className={cn('badge', cmd.scope === 'user' ? 'badge-blue' : 'badge-purple')}>{cmd.scope}</span>
                 </div>
                 <p className="text-xs text-text-secondary mb-3 line-clamp-2">{cmd.description || 'No description'}</p>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => { setEditingCmd(cmd); setShowEditor(true) }} className="btn-ghost text-xs"><Edit3 size={12} /> Edit</button>
                 </div>
               </div>

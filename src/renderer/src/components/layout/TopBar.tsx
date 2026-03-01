@@ -22,6 +22,7 @@ const pageTitles: Record<string, string> = {
   '/rules': 'Rules Manager',
   '/api-keys': 'API Keys',
   '/docs': 'Documentation',
+  '/agent-design': 'Agent Design Studio',
 }
 
 export function TopBar() {

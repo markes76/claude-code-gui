@@ -7,6 +7,7 @@ import { SearchInput } from '../components/shared/SearchInput'
 import { Modal } from '../components/shared/Modal'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
+import { SkillCard, computeRarity } from '../components/gamified/SkillCard'
 import type { SkillInfo } from '../types/config'
 
 const WIZARD_STEPS: WizardStepDef[] = [
@@ -163,31 +164,15 @@ export function SkillsPage() {
             }
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((skill) => (
-              <div key={skill.path} className="card-hover group">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Zap size={16} className="text-accent-orange" />
-                    <span className="font-medium text-sm">/{skill.name}</span>
-                  </div>
-                  <span className={cn('badge', skill.scope === 'user' ? 'badge-blue' : 'badge-purple')}>
-                    {skill.scope}
-                  </span>
-                </div>
-                <p className="text-xs text-text-secondary mb-3 line-clamp-2">{skill.description || 'No description'}</p>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => { setEditingSkill(skill); setShowEditor(true) }}
-                    className="btn-ghost text-xs"
-                  >
-                    <Edit3 size={12} /> Edit
-                  </button>
-                  <button onClick={() => handleDelete(skill)} className="btn-ghost text-xs text-accent-red">
-                    <Trash2 size={12} /> Delete
-                  </button>
-                </div>
-              </div>
+              <SkillCard
+                key={skill.path}
+                skill={skill}
+                rarity={computeRarity(skill)}
+                onEdit={(s) => { setEditingSkill(s); setShowEditor(true) }}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

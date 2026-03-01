@@ -329,7 +329,7 @@ export function RulesPage() {
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteRule(rule.path) }}
-                    className="opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent-red transition-opacity flex-shrink-0"
+                    className="opacity-60 group-hover:opacity-100 text-text-muted hover:text-accent-red transition-opacity flex-shrink-0"
                     title="Delete rule"
                   >
                     <Trash2 size={12} />

@@ -4,6 +4,7 @@ import { cn, getApi } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
 import { useEditorStore } from '../stores/editor-store'
 import { CodeEditor } from '../components/shared/CodeEditor'
+import { VoiceSettings } from '../components/voice/VoiceSettings'
 import type { SettingsData } from '../types/config'
 
 const SCOPES = [
@@ -291,6 +292,9 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Voice */}
+            <VoiceSettings />
           </div>
         )}
       </div>

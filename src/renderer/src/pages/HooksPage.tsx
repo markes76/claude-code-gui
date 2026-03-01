@@ -6,6 +6,7 @@ import { EmptyState } from '../components/shared/EmptyState'
 import { Modal } from '../components/shared/Modal'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
+import { HookModule } from '../components/gamified/HookModule'
 import type { HookEventType, HookMatcher, HookConfig, HooksConfig } from '../types/config'
 
 const HOOK_EVENTS: { id: HookEventType; label: string; desc: string; canBlock: boolean }[] = [
@@ -168,55 +169,16 @@ export function HooksPage() {
           />
         ) : (
           <div className="space-y-3">
-            {HOOK_EVENTS.map((event) => {
-              const eventHooks = hooks[event.id] || []
-              const isExpanded = expandedEvents.has(event.id)
-
-              return (
-                <div key={event.id} className="card">
-                  <button
-                    onClick={() => toggleEvent(event.id)}
-                    className="w-full flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-text-muted">
-                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                      </span>
-                      <div className="text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{event.label}</span>
-                          {event.canBlock && <span className="badge-orange text-[10px]">Can Block</span>}
-                        </div>
-                        <p className="text-xs text-text-muted">{event.desc}</p>
-                      </div>
-                    </div>
-                    <span className={cn('badge', eventHooks.length > 0 ? 'badge-green' : 'bg-bg-tertiary text-text-muted')}>
-                      {eventHooks.length}
-                    </span>
-                  </button>
-
-                  {isExpanded && eventHooks.length > 0 && (
-                    <div className="mt-3 space-y-2 pl-7">
-                      {eventHooks.map((h, i) => (
-                        <div key={i} className="flex items-start justify-between p-3 rounded-lg bg-bg-primary border border-border">
-                          <div>
-                            {h.matcher && <div className="text-xs font-mono text-accent-cyan mb-1">Matcher: {h.matcher}</div>}
-                            {h.hooks.map((hook, j) => (
-                              <div key={j} className="text-xs font-mono text-text-secondary">
-                                {hook.type === 'command' ? hook.command : hook.prompt}
-                              </div>
-                            ))}
-                          </div>
-                          <button onClick={() => removeHook(event.id, i)} className="text-text-muted hover:text-accent-red transition-colors">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {HOOK_EVENTS.map((event) => (
+              <HookModule
+                key={event.id}
+                event={event}
+                hooks={hooks[event.id] || []}
+                isExpanded={expandedEvents.has(event.id)}
+                onToggle={() => toggleEvent(event.id)}
+                onRemove={(index) => removeHook(event.id, index)}
+              />
+            ))}
           </div>
         )}
       </div>

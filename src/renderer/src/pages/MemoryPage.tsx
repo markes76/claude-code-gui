@@ -508,7 +508,7 @@ export function MemoryPage() {
                             {!file.isEntrypoint && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); deleteFile(file.path) }}
-                                className="ml-auto opacity-0 group-hover:opacity-100 text-text-muted hover:text-accent-red transition-opacity"
+                                className="ml-auto opacity-60 group-hover:opacity-100 text-text-muted hover:text-accent-red transition-opacity"
                                 title="Delete topic file"
                               >
                                 <Trash2 size={10} />

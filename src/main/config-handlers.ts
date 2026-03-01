@@ -331,6 +331,26 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     return { success: true }
   })
 
+  // ── Agent Visuals ──────────────────────────────────────
+
+  ipcMain.handle('config:get-agent-visuals', async () => {
+    return safeReadJson(join(claudeDir, 'gui-agent-visuals.json'))
+  })
+
+  ipcMain.handle('config:save-agent-visuals', async (_event, data: any) => {
+    return { success: safeWriteJson(join(claudeDir, 'gui-agent-visuals.json'), data) }
+  })
+
+  // ── Voice Config ──────────────────────────────────────
+
+  ipcMain.handle('config:get-voice-config', async () => {
+    return safeReadJson(join(claudeDir, 'gui-voice-config.json'))
+  })
+
+  ipcMain.handle('config:save-voice-config', async (_event, data: any) => {
+    return { success: safeWriteJson(join(claudeDir, 'gui-voice-config.json'), data) }
+  })
+
   // ── Environment Variables (.env) ──────────────────────
 
   ipcMain.handle('env:read', async (_event, envPath?: string) => {
