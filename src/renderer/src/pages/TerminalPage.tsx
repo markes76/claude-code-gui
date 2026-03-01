@@ -692,49 +692,6 @@ export function TerminalPage() {
             )}
           </div>
 
-          {/* Terminal color theme selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowThemePicker(!showThemePicker)}
-              className="btn-secondary text-xs gap-1"
-              title="Change terminal color theme"
-            >
-              <Palette size={14} />
-              {selectedThemeName}
-              <ChevronDown size={12} />
-            </button>
-            {showThemePicker && (
-              <div className="absolute top-full left-0 mt-1 w-44 bg-bg-card border border-border rounded-lg shadow-xl z-10 py-1">
-                {Object.keys(TERMINAL_THEMES).map(themeName => (
-                  <button
-                    key={themeName}
-                    onClick={() => {
-                      setSelectedThemeName(themeName)
-                      localStorage.setItem('claude-gui-terminal-theme', themeName)
-                      setShowThemePicker(false)
-                      // Apply to all open terminals immediately
-                      tabsRef.current.forEach((tab) => {
-                        if (tab.terminal) {
-                          tab.terminal.options.theme = TERMINAL_THEMES[themeName]
-                        }
-                      })
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors',
-                      selectedThemeName === themeName && 'text-accent-orange'
-                    )}
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
-                      style={{ background: TERMINAL_THEMES[themeName].background }}
-                    />
-                    {themeName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Current project directory indicator — click to change */}
           {currentProjectDir && (
             <button
@@ -816,7 +773,7 @@ export function TerminalPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-1 text-xs text-text-muted">
+        <div className="flex items-center gap-2 text-xs text-text-muted">
           {activeTab && !activeTab.dead && activeTab.ptyId && (
             <span className="flex items-center gap-1.5 text-accent-green">
               <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
@@ -829,6 +786,47 @@ export function TerminalPage() {
               Exited
             </span>
           )}
+
+          {/* Terminal color theme selector — right side so it's never hidden by overflow */}
+          <div className="relative">
+            <button
+              onClick={() => setShowThemePicker(!showThemePicker)}
+              className="flex items-center gap-1 px-2 py-1 rounded text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+              title={`Terminal theme: ${selectedThemeName}`}
+            >
+              <Palette size={13} />
+              <span className="text-[10px]">{selectedThemeName}</span>
+            </button>
+            {showThemePicker && (
+              <div className="absolute top-full right-0 mt-1 w-44 bg-bg-card border border-border rounded-lg shadow-xl z-20 py-1">
+                {Object.keys(TERMINAL_THEMES).map(themeName => (
+                  <button
+                    key={themeName}
+                    onClick={() => {
+                      setSelectedThemeName(themeName)
+                      localStorage.setItem('claude-gui-terminal-theme', themeName)
+                      setShowThemePicker(false)
+                      tabsRef.current.forEach((tab) => {
+                        if (tab.terminal) {
+                          tab.terminal.options.theme = TERMINAL_THEMES[themeName]
+                        }
+                      })
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors',
+                      selectedThemeName === themeName && 'text-accent-orange'
+                    )}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
+                      style={{ background: TERMINAL_THEMES[themeName].background }}
+                    />
+                    {themeName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

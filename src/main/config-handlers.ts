@@ -65,55 +65,42 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
 
   // ── Skills ──────────────────────────────────────────
 
-  ipcMain.handle('config:list-skills', async (_event, projectDir?: string) => {
-    const skills: any[] = []
-
-    // User skills
-    const userSkillsDir = join(claudeDir, 'skills')
-    if (existsSync(userSkillsDir)) {
-      const entries = readdirSync(userSkillsDir)
-      for (const entry of entries) {
-        const skillDir = join(userSkillsDir, entry)
-        const skillFile = join(skillDir, 'SKILL.md')
-        if (existsSync(skillFile)) {
-          const content = readFileSync(skillFile, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          skills.push({
-            name: frontmatter.name || entry,
-            description: frontmatter.description || '',
-            scope: 'user',
-            path: skillDir,
-            content,
-            frontmatter
-          })
-        }
-      }
-    }
-
-    // Project skills
-    if (projectDir) {
-      const projSkillsDir = join(projectDir, '.claude', 'skills')
-      if (existsSync(projSkillsDir)) {
-        const entries = readdirSync(projSkillsDir)
-        for (const entry of entries) {
-          const skillDir = join(projSkillsDir, entry)
-          const skillFile = join(skillDir, 'SKILL.md')
+  // Recursively walk a skills directory and collect all SKILL.md files
+  function collectSkills(dir: string, scope: 'user' | 'project', results: any[]) {
+    if (!existsSync(dir)) return
+    const entries = readdirSync(dir)
+    for (const entry of entries) {
+      const fullPath = join(dir, entry)
+      try {
+        const stat = statSync(fullPath)
+        if (stat.isDirectory()) {
+          const skillFile = join(fullPath, 'SKILL.md')
           if (existsSync(skillFile)) {
             const content = readFileSync(skillFile, 'utf-8')
             const frontmatter = parseFrontmatter(content)
-            skills.push({
+            results.push({
               name: frontmatter.name || entry,
               description: frontmatter.description || '',
-              scope: 'project',
-              path: skillDir,
+              scope,
+              path: fullPath,
               content,
               frontmatter
             })
+          } else {
+            // Recurse into subdirectory to find nested skills
+            collectSkills(fullPath, scope, results)
           }
         }
-      }
+      } catch { /* skip unreadable entries */ }
     }
+  }
 
+  ipcMain.handle('config:list-skills', async (_event, projectDir?: string) => {
+    const skills: any[] = []
+    collectSkills(join(claudeDir, 'skills'), 'user', skills)
+    if (projectDir) {
+      collectSkills(join(projectDir, '.claude', 'skills'), 'project', skills)
+    }
     return skills
   })
 
