@@ -169,7 +169,7 @@ export function SkillsPage() {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search skills..." className="w-64" />
-          <span className="text-xs text-text-muted">{filtered.length} skills</span>
+          <span className="text-xs text-text-muted">{filtered.length + filteredPluginGroups.reduce((sum, g) => sum + g.skills.length, 0)} skills</span>
         </div>
         <button onClick={() => { resetWizard(); setShowWizard(true) }} className="btn-primary text-sm">
           <Plus size={16} />
