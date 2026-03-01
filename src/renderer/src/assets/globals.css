@@ -17,21 +17,21 @@
   --scrollbar-hover: #94a3b8;
   --selection-bg: rgba(232, 93, 32, 0.2);
 
-  /* Accent colors — darker for light backgrounds */
-  --accent-orange: #e85d20;
-  --accent-coral: #e07040;
-  --accent-purple: #7c3aed;
-  --accent-blue: #2563eb;
-  --accent-cyan: #0891b2;
-  --accent-green: #059669;
-  --accent-red: #dc2626;
-  --accent-yellow: #d97706;
+  /* Accent colors as RGB channels — darker for light backgrounds */
+  --accent-orange: 232 93 32;
+  --accent-coral: 224 112 64;
+  --accent-purple: 124 58 237;
+  --accent-blue: 37 99 235;
+  --accent-cyan: 8 145 178;
+  --accent-green: 5 150 105;
+  --accent-red: 220 38 38;
+  --accent-yellow: 217 119 6;
 
-  /* Tactical HUD colors (Mission Control theme) */
-  --tactical-amber: #d97706;
-  --tactical-cyan: #0891b2;
-  --tactical-green: #059669;
-  --tactical-red: #dc2626;
+  /* Tactical HUD colors as RGB channels */
+  --tactical-amber: 217 119 6;
+  --tactical-cyan: 8 145 178;
+  --tactical-green: 5 150 105;
+  --tactical-red: 220 38 38;
   --hud-panel: rgba(255, 255, 255, 0.85);
   --hud-glass: rgba(241, 245, 249, 0.7);
   --hud-border: rgba(203, 213, 225, 0.5);
@@ -51,21 +51,21 @@
   --scrollbar-hover: #3a3a4a;
   --selection-bg: rgba(255, 107, 53, 0.3);
 
-  /* Accent colors — vibrant for dark backgrounds */
-  --accent-orange: #ff6b35;
-  --accent-coral: #ff8c61;
-  --accent-purple: #8b5cf6;
-  --accent-blue: #3b82f6;
-  --accent-cyan: #06b6d4;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --accent-yellow: #f59e0b;
+  /* Accent colors as RGB channels — vibrant for dark backgrounds */
+  --accent-orange: 255 107 53;
+  --accent-coral: 255 140 97;
+  --accent-purple: 139 92 246;
+  --accent-blue: 59 130 246;
+  --accent-cyan: 6 182 212;
+  --accent-green: 16 185 129;
+  --accent-red: 239 68 68;
+  --accent-yellow: 245 158 11;
 
-  /* Tactical HUD colors (Mission Control theme) */
-  --tactical-amber: #f59e0b;
-  --tactical-cyan: #06b6d4;
-  --tactical-green: #10b981;
-  --tactical-red: #ef4444;
+  /* Tactical HUD colors as RGB channels */
+  --tactical-amber: 245 158 11;
+  --tactical-cyan: 6 182 212;
+  --tactical-green: 16 185 129;
+  --tactical-red: 239 68 68;
   --hud-panel: rgba(22, 22, 31, 0.85);
   --hud-glass: rgba(18, 18, 26, 0.7);
   --hud-border: rgba(42, 42, 58, 0.5);
@@ -183,16 +183,13 @@
     @apply text-sm font-mono font-bold text-text-primary;
   }
   .hud-event-active {
-    @apply border-l-2 pl-2;
-    border-left-color: var(--tactical-cyan);
+    @apply border-l-2 pl-2 border-l-tactical-cyan;
   }
   .hud-event-completed {
-    @apply border-l-2 pl-2 opacity-70;
-    border-left-color: var(--tactical-green);
+    @apply border-l-2 pl-2 opacity-70 border-l-tactical-green;
   }
   .hud-event-failed {
-    @apply border-l-2 pl-2 opacity-70;
-    border-left-color: var(--tactical-red);
+    @apply border-l-2 pl-2 opacity-70 border-l-tactical-red;
   }
 
   /* ── Gamified Card Rarity ─────────────────────────────── */
@@ -200,19 +197,17 @@
     @apply border-border;
   }
   .card-uncommon {
-    border-color: var(--accent-green);
-    border-opacity: 0.4;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.08);
+    @apply border-accent-green/40;
+    box-shadow: 0 0 12px rgb(var(--accent-green) / 0.08);
   }
   .card-rare {
-    border-color: var(--accent-blue);
-    border-opacity: 0.5;
-    box-shadow: 0 0 16px rgba(59, 130, 246, 0.1);
+    @apply border-accent-blue/50;
+    box-shadow: 0 0 16px rgb(var(--accent-blue) / 0.1);
   }
   .card-legendary {
     border: 2px solid transparent;
     background-clip: padding-box;
-    box-shadow: 0 0 20px rgba(255, 107, 53, 0.15), inset 0 0 0 1px var(--accent-orange);
+    box-shadow: 0 0 20px rgb(var(--accent-orange) / 0.15), inset 0 0 0 1px rgb(var(--accent-orange));
   }
   .powerup-active {
     box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);

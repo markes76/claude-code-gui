@@ -12,20 +12,20 @@ module.exports = {
           card: 'var(--bg-card)',
         },
         accent: {
-          orange: 'var(--accent-orange)',
-          coral: 'var(--accent-coral)',
-          purple: 'var(--accent-purple)',
-          blue: 'var(--accent-blue)',
-          cyan: 'var(--accent-cyan)',
-          green: 'var(--accent-green)',
-          red: 'var(--accent-red)',
-          yellow: 'var(--accent-yellow)',
+          orange: 'rgb(var(--accent-orange) / <alpha-value>)',
+          coral: 'rgb(var(--accent-coral) / <alpha-value>)',
+          purple: 'rgb(var(--accent-purple) / <alpha-value>)',
+          blue: 'rgb(var(--accent-blue) / <alpha-value>)',
+          cyan: 'rgb(var(--accent-cyan) / <alpha-value>)',
+          green: 'rgb(var(--accent-green) / <alpha-value>)',
+          red: 'rgb(var(--accent-red) / <alpha-value>)',
+          yellow: 'rgb(var(--accent-yellow) / <alpha-value>)',
         },
         tactical: {
-          amber: 'var(--tactical-amber)',
-          cyan: 'var(--tactical-cyan)',
-          green: 'var(--tactical-green)',
-          red: 'var(--tactical-red)',
+          amber: 'rgb(var(--tactical-amber) / <alpha-value>)',
+          cyan: 'rgb(var(--tactical-cyan) / <alpha-value>)',
+          green: 'rgb(var(--tactical-green) / <alpha-value>)',
+          red: 'rgb(var(--tactical-red) / <alpha-value>)',
         },
         hud: {
           panel: 'var(--hud-panel)',
@@ -51,8 +51,8 @@ module.exports = {
       },
       keyframes: {
         'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 4px var(--accent-orange)', opacity: '1' },
-          '50%': { boxShadow: '0 0 16px var(--accent-orange)', opacity: '0.8' },
+          '0%, 100%': { boxShadow: '0 0 4px rgb(var(--accent-orange))', opacity: '1' },
+          '50%': { boxShadow: '0 0 16px rgb(var(--accent-orange))', opacity: '0.8' },
         },
         'radar-sweep': {
           '0%': { transform: 'rotate(0deg)' },
