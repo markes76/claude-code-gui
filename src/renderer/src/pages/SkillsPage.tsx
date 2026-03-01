@@ -176,7 +176,7 @@ export function SkillsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-text-secondary mb-3 line-clamp-2">{skill.description || 'No description'}</p>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => { setEditingSkill(skill); setShowEditor(true) }}
                     className="btn-ghost text-xs"

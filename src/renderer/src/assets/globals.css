@@ -12,10 +12,11 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
-  --border-color: #e2e8f0;
+  --border-color: #cbd5e1;
   --scrollbar-thumb: #cbd5e1;
   --scrollbar-hover: #94a3b8;
   --selection-bg: rgba(255, 107, 53, 0.2);
+  --card-shadow: 0 1px 4px 0 rgba(0,0,0,0.07), 0 1px 2px 0 rgba(0,0,0,0.04);
 }
 
 /* Dark mode */
@@ -31,6 +32,7 @@
   --scrollbar-thumb: #2a2a3a;
   --scrollbar-hover: #3a3a4a;
   --selection-bg: rgba(255, 107, 53, 0.3);
+  --card-shadow: none;
 }
 
 @layer base {
@@ -53,6 +55,7 @@
 @layer components {
   .card {
     @apply bg-bg-card rounded-card border border-border p-5;
+    box-shadow: var(--card-shadow);
   }
   .card-hover {
     @apply card transition-all duration-200 hover:border-accent-orange/30 hover:shadow-lg hover:shadow-accent-orange/5;
@@ -125,6 +128,13 @@
     @apply text-2xl font-heading font-bold text-text-primary mb-6;
   }
 }
+
+/* Light mode: increase badge background opacity for better visibility */
+:root .badge-orange { background-color: rgba(255, 107, 53, 0.15); }
+:root .badge-green  { background-color: rgba(16, 185, 129, 0.15); }
+:root .badge-red    { background-color: rgba(239, 68, 68, 0.15); }
+:root .badge-blue   { background-color: rgba(59, 130, 246, 0.15); }
+:root .badge-purple { background-color: rgba(139, 92, 246, 0.15); }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {

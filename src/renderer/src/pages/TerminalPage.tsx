@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Plus, X, Monitor, ChevronDown, RotateCcw, Terminal as TermIcon,
   Brain, Loader2, Sparkles, Send, ChevronUp, Minimize2, FolderOpen, Clock,
-  History, ShieldOff
+  History, ShieldOff, Palette
 } from 'lucide-react'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -22,29 +22,123 @@ interface TerminalTab {
   dead: boolean
 }
 
-const THEME = {
-  background: '#0a0a0f',
-  foreground: '#e2e8f0',
-  cursor: '#f97316',
-  cursorAccent: '#0a0a0f',
-  selectionBackground: '#f9731633',
-  selectionForeground: '#e2e8f0',
-  black: '#1e1e2e',
-  red: '#f38ba8',
-  green: '#a6e3a1',
-  yellow: '#f9e2af',
-  blue: '#89b4fa',
-  magenta: '#cba6f7',
-  cyan: '#94e2d5',
-  white: '#e2e8f0',
-  brightBlack: '#585b70',
-  brightRed: '#f38ba8',
-  brightGreen: '#a6e3a1',
-  brightYellow: '#f9e2af',
-  brightBlue: '#89b4fa',
-  brightMagenta: '#cba6f7',
-  brightCyan: '#94e2d5',
-  brightWhite: '#ffffff',
+const TERMINAL_THEMES: Record<string, Record<string, string>> = {
+  'Dark': {
+    background: '#0a0a0f',
+    foreground: '#e2e8f0',
+    cursor: '#f97316',
+    cursorAccent: '#0a0a0f',
+    selectionBackground: '#f9731633',
+    selectionForeground: '#e2e8f0',
+    black: '#1e1e2e',
+    red: '#f38ba8',
+    green: '#a6e3a1',
+    yellow: '#f9e2af',
+    blue: '#89b4fa',
+    magenta: '#cba6f7',
+    cyan: '#94e2d5',
+    white: '#e2e8f0',
+    brightBlack: '#585b70',
+    brightRed: '#f38ba8',
+    brightGreen: '#a6e3a1',
+    brightYellow: '#f9e2af',
+    brightBlue: '#89b4fa',
+    brightMagenta: '#cba6f7',
+    brightCyan: '#94e2d5',
+    brightWhite: '#ffffff',
+  },
+  'Dracula': {
+    background: '#282a36',
+    foreground: '#f8f8f2',
+    cursor: '#ff79c6',
+    cursorAccent: '#282a36',
+    selectionBackground: '#44475a',
+    black: '#21222c',
+    red: '#ff5555',
+    green: '#50fa7b',
+    yellow: '#f1fa8c',
+    blue: '#bd93f9',
+    magenta: '#ff79c6',
+    cyan: '#8be9fd',
+    white: '#f8f8f2',
+    brightBlack: '#6272a4',
+    brightRed: '#ff6e6e',
+    brightGreen: '#69ff94',
+    brightYellow: '#ffffa5',
+    brightBlue: '#d6acff',
+    brightMagenta: '#ff92df',
+    brightCyan: '#a4ffff',
+    brightWhite: '#ffffff',
+  },
+  'Solarized Dark': {
+    background: '#002b36',
+    foreground: '#839496',
+    cursor: '#268bd2',
+    cursorAccent: '#002b36',
+    selectionBackground: '#073642',
+    black: '#073642',
+    red: '#dc322f',
+    green: '#859900',
+    yellow: '#b58900',
+    blue: '#268bd2',
+    magenta: '#d33682',
+    cyan: '#2aa198',
+    white: '#eee8d5',
+    brightBlack: '#002b36',
+    brightRed: '#cb4b16',
+    brightGreen: '#586e75',
+    brightYellow: '#657b83',
+    brightBlue: '#839496',
+    brightMagenta: '#6c71c4',
+    brightCyan: '#93a1a1',
+    brightWhite: '#fdf6e3',
+  },
+  'Monokai': {
+    background: '#272822',
+    foreground: '#f8f8f2',
+    cursor: '#f8f8f0',
+    cursorAccent: '#272822',
+    selectionBackground: '#49483e',
+    black: '#272822',
+    red: '#f92672',
+    green: '#a6e22e',
+    yellow: '#f4bf75',
+    blue: '#66d9e8',
+    magenta: '#ae81ff',
+    cyan: '#a1efe4',
+    white: '#f8f8f2',
+    brightBlack: '#75715e',
+    brightRed: '#f92672',
+    brightGreen: '#a6e22e',
+    brightYellow: '#f4bf75',
+    brightBlue: '#66d9e8',
+    brightMagenta: '#ae81ff',
+    brightCyan: '#a1efe4',
+    brightWhite: '#f9f8f5',
+  },
+  'Light': {
+    background: '#fafafa',
+    foreground: '#383a42',
+    cursor: '#f97316',
+    cursorAccent: '#fafafa',
+    selectionBackground: '#e5e5e6',
+    black: '#383a42',
+    red: '#e45649',
+    green: '#50a14f',
+    yellow: '#c18401',
+    blue: '#4078f2',
+    magenta: '#a626a4',
+    cyan: '#0184bc',
+    white: '#fafafa',
+    brightBlack: '#4f525e',
+    brightRed: '#e45649',
+    brightGreen: '#50a14f',
+    brightYellow: '#c18401',
+    brightBlue: '#4078f2',
+    brightMagenta: '#a626a4',
+    brightCyan: '#0184bc',
+    brightWhite: '#ffffff',
+  },
 }
 
 const MODELS = [
@@ -75,6 +169,8 @@ export function TerminalPage() {
   const [showModelPicker, setShowModelPicker] = useState(false)
   const [continueSession, setContinueSession] = useState(false)
   const [skipPermissions, setSkipPermissions] = useState(false)
+  const [selectedThemeName, setSelectedThemeName] = useState(() => localStorage.getItem('claude-gui-terminal-theme') || 'Dark')
+  const [showThemePicker, setShowThemePicker] = useState(false)
 
   // Save Memory modal state
   const [showSaveMemory, setShowSaveMemory] = useState(false)
@@ -104,7 +200,7 @@ export function TerminalPage() {
     const tabNum = tabs.length + 1
 
     const terminal = new Terminal({
-      theme: THEME,
+      theme: TERMINAL_THEMES[selectedThemeName] || TERMINAL_THEMES['Dark'],
       fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, monospace',
       fontSize: 13,
       lineHeight: 1.4,
@@ -112,6 +208,7 @@ export function TerminalPage() {
       cursorStyle: 'bar',
       scrollback: 10000,
       allowProposedApi: true,
+      scrollOnUserInput: true,
     })
 
     const fitAddon = new FitAddon()
@@ -139,6 +236,7 @@ export function TerminalPage() {
 
       terminal.open(container)
       fitAddon.fit()
+      terminal.scrollToBottom()
 
       // Spawn Claude in PTY — use project dir as cwd so Claude works inside the project
       const extraArgs: string[] = []
@@ -427,7 +525,7 @@ export function TerminalPage() {
     if (activeTabId) {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon && tab.terminal) {
-        try { tab.fitAddon.fit() } catch { /* ignore */ }
+        try { tab.fitAddon.fit(); tab.terminal.scrollToBottom() } catch { /* ignore */ }
         tab.terminal.focus()
       }
     }
@@ -438,8 +536,8 @@ export function TerminalPage() {
     const handleResize = () => {
       if (activeTabId) {
         const tab = tabsRef.current.get(activeTabId)
-        if (tab?.fitAddon) {
-          try { tab.fitAddon.fit() } catch { /* ignore */ }
+        if (tab?.fitAddon && tab.terminal) {
+          try { tab.fitAddon.fit(); tab.terminal.scrollToBottom() } catch { /* ignore */ }
         }
       }
     }
@@ -463,7 +561,7 @@ export function TerminalPage() {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon && tab.terminal) {
         setTimeout(() => {
-          try { tab.fitAddon!.fit() } catch { /* ignore */ }
+          try { tab.fitAddon!.fit(); tab.terminal!.scrollToBottom() } catch { /* ignore */ }
           tab.terminal!.focus()
         }, 50)
       }
@@ -485,7 +583,7 @@ export function TerminalPage() {
       const tab = tabsRef.current.get(activeTabId)
       if (tab?.fitAddon) {
         setTimeout(() => {
-          try { tab.fitAddon!.fit() } catch { /* ignore */ }
+          try { tab.fitAddon!.fit(); tab.terminal?.scrollToBottom() } catch { /* ignore */ }
         }, 100)
       }
     }
@@ -511,10 +609,12 @@ export function TerminalPage() {
     try { return JSON.parse(localStorage.getItem('recentProjects') || '[]') } catch { return [] }
   })()
 
+  const termBg = TERMINAL_THEMES[selectedThemeName]?.background || '#0a0a0f'
+
   // Gate: must select a project directory before using the terminal
   if (!currentProjectDir) {
     return (
-      <div className="flex flex-col h-full bg-[#0a0a0f] items-center justify-center">
+      <div className="flex flex-col h-full items-center justify-center" style={{ background: termBg }}>
         <div className="max-w-md w-full space-y-6 px-6">
           <div className="text-center space-y-2">
             <TermIcon size={40} className="mx-auto text-accent-orange opacity-80" />
@@ -559,7 +659,7 @@ export function TerminalPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]">
+    <div className="flex flex-col h-full" style={{ background: termBg }}>
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-bg-secondary">
         <div className="flex items-center gap-2">
@@ -586,6 +686,49 @@ export function TerminalPage() {
                   >
                     <span>{m.label}</span>
                     <span className="text-xs text-text-muted">{m.desc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Terminal color theme selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowThemePicker(!showThemePicker)}
+              className="btn-secondary text-xs gap-1"
+              title="Change terminal color theme"
+            >
+              <Palette size={14} />
+              {selectedThemeName}
+              <ChevronDown size={12} />
+            </button>
+            {showThemePicker && (
+              <div className="absolute top-full left-0 mt-1 w-44 bg-bg-card border border-border rounded-lg shadow-xl z-10 py-1">
+                {Object.keys(TERMINAL_THEMES).map(themeName => (
+                  <button
+                    key={themeName}
+                    onClick={() => {
+                      setSelectedThemeName(themeName)
+                      localStorage.setItem('claude-gui-terminal-theme', themeName)
+                      setShowThemePicker(false)
+                      // Apply to all open terminals immediately
+                      tabsRef.current.forEach((tab) => {
+                        if (tab.terminal) {
+                          tab.terminal.options.theme = TERMINAL_THEMES[themeName]
+                        }
+                      })
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors',
+                      selectedThemeName === themeName && 'text-accent-orange'
+                    )}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
+                      style={{ background: TERMINAL_THEMES[themeName].background }}
+                    />
+                    {themeName}
                   </button>
                 ))}
               </div>
