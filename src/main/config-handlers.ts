@@ -65,55 +65,42 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
 
   // ── Skills ──────────────────────────────────────────
 
-  ipcMain.handle('config:list-skills', async (_event, projectDir?: string) => {
-    const skills: any[] = []
-
-    // User skills
-    const userSkillsDir = join(claudeDir, 'skills')
-    if (existsSync(userSkillsDir)) {
-      const entries = readdirSync(userSkillsDir)
-      for (const entry of entries) {
-        const skillDir = join(userSkillsDir, entry)
-        const skillFile = join(skillDir, 'SKILL.md')
-        if (existsSync(skillFile)) {
-          const content = readFileSync(skillFile, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          skills.push({
-            name: frontmatter.name || entry,
-            description: frontmatter.description || '',
-            scope: 'user',
-            path: skillDir,
-            content,
-            frontmatter
-          })
-        }
-      }
-    }
-
-    // Project skills
-    if (projectDir) {
-      const projSkillsDir = join(projectDir, '.claude', 'skills')
-      if (existsSync(projSkillsDir)) {
-        const entries = readdirSync(projSkillsDir)
-        for (const entry of entries) {
-          const skillDir = join(projSkillsDir, entry)
-          const skillFile = join(skillDir, 'SKILL.md')
+  // Recursively walk a skills directory and collect all SKILL.md files
+  function collectSkills(dir: string, scope: 'user' | 'project', results: any[]) {
+    if (!existsSync(dir)) return
+    const entries = readdirSync(dir)
+    for (const entry of entries) {
+      const fullPath = join(dir, entry)
+      try {
+        const stat = statSync(fullPath)
+        if (stat.isDirectory()) {
+          const skillFile = join(fullPath, 'SKILL.md')
           if (existsSync(skillFile)) {
             const content = readFileSync(skillFile, 'utf-8')
             const frontmatter = parseFrontmatter(content)
-            skills.push({
+            results.push({
               name: frontmatter.name || entry,
               description: frontmatter.description || '',
-              scope: 'project',
-              path: skillDir,
+              scope,
+              path: fullPath,
               content,
               frontmatter
             })
+          } else {
+            // Recurse into subdirectory to find nested skills
+            collectSkills(fullPath, scope, results)
           }
         }
-      }
+      } catch { /* skip unreadable entries */ }
     }
+  }
 
+  ipcMain.handle('config:list-skills', async (_event, projectDir?: string) => {
+    const skills: any[] = []
+    collectSkills(join(claudeDir, 'skills'), 'user', skills)
+    if (projectDir) {
+      collectSkills(join(projectDir, '.claude', 'skills'), 'project', skills)
+    }
     return skills
   })
 
@@ -157,20 +144,25 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       if (!existsSync(dir)) return
       const entries = readdirSync(dir)
       for (const entry of entries) {
-        if (entry.endsWith('.md')) {
-          const filePath = join(dir, entry)
-          const content = readFileSync(filePath, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          agents.push({
-            name: frontmatter.name || entry.replace('.md', ''),
-            description: frontmatter.description || '',
-            model: frontmatter.model || 'default',
-            scope,
-            path: filePath,
-            content,
-            frontmatter
-          })
-        }
+        const fullPath = join(dir, entry)
+        try {
+          const stat = statSync(fullPath)
+          if (stat.isDirectory()) {
+            scanDir(fullPath, scope)
+          } else if (entry.endsWith('.md')) {
+            const content = readFileSync(fullPath, 'utf-8')
+            const frontmatter = parseFrontmatter(content)
+            agents.push({
+              name: frontmatter.name || entry.replace('.md', ''),
+              description: frontmatter.description || '',
+              model: frontmatter.model || 'default',
+              scope,
+              path: fullPath,
+              content,
+              frontmatter
+            })
+          }
+        } catch { /* skip unreadable entries */ }
       }
     }
 
@@ -206,23 +198,30 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('config:list-commands', async (_event, projectDir?: string) => {
     const commands: any[] = []
 
-    const scanDir = (dir: string, scope: string) => {
+    // Recursive scan — Claude Code supports subdir commands (e.g. category/cmd.md → /category:cmd)
+    const scanDir = (dir: string, scope: string, prefix = '') => {
       if (!existsSync(dir)) return
       const entries = readdirSync(dir)
       for (const entry of entries) {
-        if (entry.endsWith('.md')) {
-          const filePath = join(dir, entry)
-          const content = readFileSync(filePath, 'utf-8')
-          const frontmatter = parseFrontmatter(content)
-          commands.push({
-            name: entry.replace('.md', ''),
-            description: frontmatter.description || '',
-            scope,
-            path: filePath,
-            content,
-            frontmatter
-          })
-        }
+        const fullPath = join(dir, entry)
+        try {
+          const stat = statSync(fullPath)
+          if (stat.isDirectory()) {
+            scanDir(fullPath, scope, prefix ? `${prefix}:${entry}` : entry)
+          } else if (entry.endsWith('.md')) {
+            const content = readFileSync(fullPath, 'utf-8')
+            const frontmatter = parseFrontmatter(content)
+            const baseName = entry.replace('.md', '')
+            commands.push({
+              name: prefix ? `${prefix}:${baseName}` : baseName,
+              description: frontmatter.description || '',
+              scope,
+              path: fullPath,
+              content,
+              frontmatter
+            })
+          }
+        } catch { /* skip unreadable entries */ }
       }
     }
 
@@ -376,6 +375,61 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       return { success: false }
     }
   })
+
+  // ── Plugin Skills ──────────────────────────────────────────
+
+  ipcMain.handle('plugins:scan-skills', async () => {
+    try {
+      const manifestPath = join(claudeDir, 'plugins', 'installed_plugins.json')
+      return scanPluginSkills(manifestPath)
+    } catch {
+      return []
+    }
+  })
+}
+
+// ── Plugin Skills Scanner ──────────────────────────────────────────
+
+function scanPluginSkills(manifestPath: string): Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }> {
+  if (!existsSync(manifestPath)) return []
+  let manifest: any
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+  } catch { return [] }
+  if (!manifest?.plugins || typeof manifest.plugins !== 'object') return []
+
+  const groups: Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }> = []
+
+  for (const [pluginKey, entries] of Object.entries(manifest.plugins) as [string, any][]) {
+    const entry = entries[0]
+    if (!entry?.installPath) continue
+    const { installPath, version } = entry
+    if (!existsSync(installPath)) continue
+    const skillsDir = join(installPath, 'skills')
+    if (!existsSync(skillsDir)) continue
+
+    let subdirs: string[]
+    try {
+      subdirs = readdirSync(skillsDir).sort().filter(d => {
+        try { return statSync(join(skillsDir, d)).isDirectory() } catch { return false }
+      })
+    } catch { continue }
+
+    const skills: Array<{ name: string; description: string; path: string }> = []
+    for (const subdir of subdirs) {
+      const skillFile = join(skillsDir, subdir, 'SKILL.md')
+      if (!existsSync(skillFile)) continue
+      let fields: Record<string, any> = {}
+      try { fields = parseFrontmatter(readFileSync(skillFile, 'utf-8')) } catch {}
+      skills.push({ name: fields.name || subdir, description: fields.description || '', path: skillFile })
+    }
+    if (skills.length === 0) continue
+
+    const pluginName = pluginKey.includes('@') ? pluginKey.split('@')[0] : pluginKey
+    groups.push({ pluginKey, pluginName, version: version || '?', skills })
+  }
+
+  return groups
 }
 
 // ── Utilities ──────────────────────────────────────────

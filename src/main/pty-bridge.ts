@@ -121,6 +121,8 @@ export function registerPtyHandlers(ipcMain: IpcMain): void {
       TERM: 'xterm-256color',
       COLORTERM: 'truecolor',
     } as Record<string, string>
+    // Unset CLAUDECODE so Claude doesn't refuse to start when launched from within a Claude session
+    delete env.CLAUDECODE
 
     // Always spawn through the user's shell. node-pty uses posix_spawnp
     // which can't execute Node.js script symlinks (like claude's #!/usr/bin/env node).
