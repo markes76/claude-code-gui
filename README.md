@@ -14,6 +14,7 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 ### Terminal
 - Full PTY terminal (node-pty + xterm.js) — not a simple exec wrapper
 - Model selection (Opus, Sonnet, Haiku) from the toolbar
+- **Color Themes** — 8 built-in terminal color schemes (Dracula, Solarized Dark/Light, Nord, Monokai, Tokyo Night, Gruvbox, One Dark) with live switching
 - Multiple concurrent session tabs
 - Session memory handoff between sessions
 - **Prompt Composer** — AI-powered prompt enhancement (direct Anthropic API for speed, CLI fallback for Pro/Max/Enterprise users)
@@ -26,7 +27,7 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 - **Settings** — Visual and JSON editors for user, project, and local settings scopes
 
 ### Extensions
-- **Skills** — Browse, create, and manage reusable prompt patterns (slash commands)
+- **Skills** — Browse, create, and manage reusable prompt patterns (slash commands); includes Plugin Skills from installed plugins with collapsible groups
 - **Subagents** — Configure specialized AI personas with custom instructions and tool access
 - **Commands** — Custom slash commands that trigger specific prompts
 - **Hooks** — Event-driven automation (PreToolUse, PostToolUse, SessionStart, etc.)
@@ -43,7 +44,7 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 - **Dashboard** — System health overview with stat cards and activity feed
 
 ### Design
-- Dark and light theme with one-click toggle
+- Dark and light theme with one-click toggle — all UI elements fully visible in both modes
 - Responsive sidebar with collapse support
 - macOS-native title bar integration
 
