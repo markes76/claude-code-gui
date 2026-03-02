@@ -169,6 +169,21 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     scanDir(join(claudeDir, 'agents'), 'user')
     if (projectDir) scanDir(join(projectDir, '.claude', 'agents'), 'project')
 
+    // Scan agents from installed plugins
+    try {
+      const manifestPath = join(claudeDir, 'plugins', 'installed_plugins.json')
+      if (existsSync(manifestPath)) {
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+        if (manifest?.plugins && typeof manifest.plugins === 'object') {
+          for (const entries of Object.values(manifest.plugins) as any[][]) {
+            const entry = entries[0]
+            if (!entry?.installPath || !existsSync(entry.installPath)) continue
+            scanDir(join(entry.installPath, 'agents'), 'plugin')
+          }
+        }
+      }
+    } catch { /* ignore plugin scan errors */ }
+
     return agents
   })
 
