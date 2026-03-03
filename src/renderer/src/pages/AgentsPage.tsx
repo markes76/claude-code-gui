@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { Bot, Plus, Edit3, Trash2, Save, User, Cpu } from 'lucide-react'
-import { cn, getApi, buildFrontmatter } from '../lib/utils'
+import { cn, getApi, buildFrontmatter, parseFrontmatter } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
 import { SearchInput } from '../components/shared/SearchInput'
@@ -29,8 +29,8 @@ export function AgentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showWizard, setShowWizard] = useState(false)
-  const [showEditor, setShowEditor] = useState(false)
-  const [editingAgent, setEditingAgent] = useState<AgentInfo | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingPath, setEditingPath] = useState<string | null>(null)
 
   const [wizardStep, setWizardStep] = useState(0)
   const [agentName, setAgentName] = useState('')
@@ -67,9 +67,26 @@ export function AgentsPage() {
     setAgentAllowedTools('')
     setAgentDenyTools('')
     setAgentPrompt('')
+    setIsEditing(false)
+    setEditingPath(null)
   }
 
-  const handleCreate = async () => {
+  const openEditWizard = (agent: AgentInfo) => {
+    const { frontmatter, body } = parseFrontmatter(agent.content)
+    setAgentName(frontmatter.name || agent.name)
+    setAgentDesc(frontmatter.description || agent.description || '')
+    setAgentModel(frontmatter.model || agent.model || 'sonnet')
+    setAgentScope(agent.scope === 'project' ? 'project' : 'user')
+    setAgentAllowedTools(frontmatter['allowed-tools'] || '')
+    setAgentDenyTools(frontmatter.deny || '')
+    setAgentPrompt(body.trim())
+    setWizardStep(0)
+    setIsEditing(true)
+    setEditingPath(agent.path)
+    setShowWizard(true)
+  }
+
+  const handleSave = async () => {
     const api = getApi()
     if (!api) return
 
@@ -83,30 +100,24 @@ export function AgentsPage() {
 
     const content = buildFrontmatter(fm) + agentPrompt
 
-    const result = await api.config.saveAgent({
-      name: agentName,
-      content,
-      scope: agentScope,
-      projectDir: currentProjectDir,
-    })
+    let success = false
+    if (isEditing && editingPath) {
+      const result = await api.fs.write(editingPath, content)
+      success = result.success
+    } else {
+      const result = await api.config.saveAgent({
+        name: agentName,
+        content,
+        scope: agentScope,
+        projectDir: currentProjectDir,
+      })
+      success = result.success
+    }
 
-    if (result.success) {
-      addActivity({ type: 'config', message: `Created agent: ${agentName}`, status: 'success' })
+    if (success) {
+      addActivity({ type: 'config', message: `${isEditing ? 'Updated' : 'Created'} agent: ${agentName}`, status: 'success' })
       setShowWizard(false)
       resetWizard()
-      loadAgents()
-    }
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editingAgent) return
-    const api = getApi()
-    if (!api) return
-
-    const result = await api.fs.write(editingAgent.path, editingAgent.content)
-    if (result.success) {
-      addActivity({ type: 'config', message: `Updated agent: ${editingAgent.name}`, status: 'success' })
-      setShowEditor(false)
       loadAgents()
     }
   }
@@ -166,7 +177,7 @@ export function AgentsPage() {
                 <p className="text-xs text-text-secondary mb-3 line-clamp-2">{agent.description || 'No description'}</p>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => { setEditingAgent(agent); setShowEditor(true) }}
+                    onClick={() => openEditWizard(agent)}
                     className="btn-ghost text-xs"
                   >
                     <Edit3 size={12} /> Edit
@@ -182,15 +193,16 @@ export function AgentsPage() {
       {showWizard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowWizard(false)} />
-          <div className="relative w-full max-w-3xl mx-4 bg-bg-card border border-border rounded-2xl shadow-2xl max-h-[85vh] flex flex-col">
+          <div className="relative w-full max-w-3xl mx-4 bg-bg-card border border-border rounded-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden">
             <StepWizard
               steps={WIZARD_STEPS}
               currentStep={wizardStep}
               onStepChange={setWizardStep}
-              onComplete={handleCreate}
-              onCancel={() => setShowWizard(false)}
+              onComplete={handleSave}
+              onCancel={() => { setShowWizard(false); resetWizard() }}
               canAdvance={canAdvance()}
-              completeLabel="Create Agent"
+              completeLabel={isEditing ? 'Save Agent' : 'Create Agent'}
+              freeNavigation={isEditing}
             >
               {wizardStep === 0 && (
                 <div className="space-y-4">
@@ -271,13 +283,6 @@ export function AgentsPage() {
         </div>
       )}
 
-      {showEditor && editingAgent && (
-        <Modal open={showEditor} onClose={() => { setShowEditor(false); setEditingAgent(null) }} title={`Edit Agent: ${editingAgent.name}`} size="xl"
-          footer={<><button onClick={() => setShowEditor(false)} className="btn-secondary">Cancel</button><button onClick={handleSaveEdit} className="btn-primary"><Save size={14} /> Save</button></>}
-        >
-          <CodeEditor value={editingAgent.content} onChange={(val) => setEditingAgent({ ...editingAgent, content: val })} language="markdown" minHeight="400px" />
-        </Modal>
-      )}
     </div>
   )
 }

@@ -17,6 +17,7 @@ interface StepWizardProps {
   canAdvance: boolean
   children: React.ReactNode
   completeLabel?: string
+  freeNavigation?: boolean
 }
 
 export function StepWizard({
@@ -27,33 +28,38 @@ export function StepWizard({
   onCancel,
   canAdvance,
   children,
-  completeLabel = 'Create'
+  completeLabel = 'Create',
+  freeNavigation = false,
 }: StepWizardProps) {
   const isFirst = currentStep === 0
   const isLast = currentStep === steps.length - 1
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Step indicator */}
-      <div className="flex items-center gap-1 px-6 py-4 border-b border-border bg-bg-secondary">
-        {steps.map((step, i) => (
+      <div className="flex items-center gap-1 px-6 py-4 border-b border-border bg-bg-secondary flex-shrink-0">
+        {steps.map((step, i) => {
+          const isNavigable = freeNavigation ? i !== currentStep : i < currentStep
+          return (
           <React.Fragment key={step.id}>
             <button
-              onClick={() => i < currentStep ? onStepChange(i) : undefined}
+              onClick={() => isNavigable ? onStepChange(i) : undefined}
               className={cn(
                 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all',
                 i === currentStep && 'bg-accent-orange/10 text-accent-orange font-medium',
-                i < currentStep && 'text-accent-green cursor-pointer hover:bg-bg-tertiary',
-                i > currentStep && 'text-text-muted'
+                i < currentStep && !freeNavigation && 'text-accent-green cursor-pointer hover:bg-bg-tertiary',
+                freeNavigation && i !== currentStep && 'text-accent-green cursor-pointer hover:bg-bg-tertiary',
+                i > currentStep && !freeNavigation && 'text-text-muted'
               )}
             >
               <span className={cn(
                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border',
                 i === currentStep && 'border-accent-orange bg-accent-orange/20 text-accent-orange',
-                i < currentStep && 'border-accent-green bg-accent-green/20 text-accent-green',
-                i > currentStep && 'border-border text-text-muted'
+                i < currentStep && !freeNavigation && 'border-accent-green bg-accent-green/20 text-accent-green',
+                freeNavigation && i !== currentStep && 'border-accent-green bg-accent-green/20 text-accent-green',
+                i > currentStep && !freeNavigation && 'border-border text-text-muted'
               )}>
-                {i < currentStep ? <Check size={12} /> : i + 1}
+                {(i < currentStep || (freeNavigation && i !== currentStep)) ? <Check size={12} /> : i + 1}
               </span>
               <span className="hidden md:inline">{step.title}</span>
             </button>
@@ -64,11 +70,12 @@ export function StepWizard({
               )} />
             )}
           </React.Fragment>
-        ))}
+          )
+        })}
       </div>
 
       {/* Step content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto min-h-0 p-6">
         <div className="mb-4">
           <h3 className="text-lg font-heading font-semibold">{steps[currentStep].title}</h3>
           <p className="text-sm text-text-secondary mt-1">{steps[currentStep].description}</p>
@@ -77,7 +84,7 @@ export function StepWizard({
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-bg-secondary">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-bg-secondary flex-shrink-0">
         <button onClick={onCancel} className="btn-ghost">
           <X size={16} />
           Cancel
