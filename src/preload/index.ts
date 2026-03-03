@@ -47,10 +47,14 @@ const api = {
       ipcRenderer.invoke('config:list-agents', projectDir),
     saveAgent: (options: any) =>
       ipcRenderer.invoke('config:save-agent', options),
+    deleteAgent: (path: string) =>
+      ipcRenderer.invoke('config:delete-agent', path),
     listCommands: (projectDir?: string) =>
       ipcRenderer.invoke('config:list-commands', projectDir),
     saveCommand: (options: any) =>
       ipcRenderer.invoke('config:save-command', options),
+    deleteCommand: (path: string) =>
+      ipcRenderer.invoke('config:delete-command', path),
     getHooks: (scope: string, projectDir?: string) =>
       ipcRenderer.invoke('config:get-hooks', scope, projectDir),
     saveHooks: (hooks: any, scope: string, projectDir?: string) =>
@@ -149,7 +153,12 @@ const api = {
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
-  }
+  },
+
+  // App lifecycle
+  app: {
+    relaunch: () => ipcRenderer.invoke('app:relaunch'),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

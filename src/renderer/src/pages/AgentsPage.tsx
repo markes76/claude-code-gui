@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
 import { SearchInput } from '../components/shared/SearchInput'
 import { Modal } from '../components/shared/Modal'
+import { RelaunchBanner } from '../components/shared/RelaunchBanner'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
 import type { AgentInfo } from '../types/config'
@@ -31,6 +32,8 @@ export function AgentsPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editingPath, setEditingPath] = useState<string | null>(null)
+  const [showRelaunch, setShowRelaunch] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<AgentInfo | null>(null)
 
   const [wizardStep, setWizardStep] = useState(0)
   const [agentName, setAgentName] = useState('')
@@ -119,6 +122,19 @@ export function AgentsPage() {
       setShowWizard(false)
       resetWizard()
       loadAgents()
+      setShowRelaunch(true)
+    }
+  }
+
+  const handleDelete = async (agent: AgentInfo) => {
+    const api = getApi()
+    if (!api) return
+    const result = await api.config.deleteAgent(agent.path)
+    if (result.success) {
+      addActivity({ type: 'config', message: `Deleted agent: ${agent.name}`, status: 'success' })
+      setConfirmDelete(null)
+      loadAgents()
+      setShowRelaunch(true)
     }
   }
 
@@ -134,6 +150,7 @@ export function AgentsPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {showRelaunch && <RelaunchBanner onDismiss={() => setShowRelaunch(false)} />}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <SearchInput value={search} onChange={setSearch} placeholder="Search agents..." className="w-64" />
@@ -176,11 +193,14 @@ export function AgentsPage() {
                 </div>
                 <p className="text-xs text-text-secondary mb-3 line-clamp-2">{agent.description || 'No description'}</p>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => openEditWizard(agent)}
-                    className="btn-ghost text-xs"
-                  >
+                  <button onClick={() => openEditWizard(agent)} className="btn-ghost text-xs">
                     <Edit3 size={12} /> Edit
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(agent)}
+                    className="btn-ghost text-xs text-accent-red hover:text-accent-red"
+                  >
+                    <Trash2 size={12} /> Delete
                   </button>
                 </div>
               </div>
@@ -283,6 +303,26 @@ export function AgentsPage() {
         </div>
       )}
 
+      {confirmDelete && (
+        <Modal
+          open={!!confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          title="Delete Agent"
+          footer={
+            <>
+              <button onClick={() => setConfirmDelete(null)} className="btn-secondary">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="btn-primary bg-accent-red/10 text-accent-red border-accent-red/20 hover:bg-accent-red/20">
+                <Trash2 size={14} /> Delete
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-text-secondary">
+            Delete agent <span className="font-mono text-text-primary font-medium">@{confirmDelete.name}</span>?
+            This removes the file permanently.
+          </p>
+        </Modal>
+      )}
     </div>
   )
 }

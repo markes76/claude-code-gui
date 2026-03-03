@@ -4,6 +4,7 @@ import { cn, getApi } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
 import { Modal } from '../components/shared/Modal'
+import { RelaunchBanner } from '../components/shared/RelaunchBanner'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
 import type { HookEventType, HookMatcher, HookConfig, HooksConfig } from '../types/config'
@@ -42,6 +43,7 @@ export function HooksPage() {
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set())
   const [showWizard, setShowWizard] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showRelaunch, setShowRelaunch] = useState(false)
 
   const [wizardStep, setWizardStep] = useState(0)
   const [selectedEvent, setSelectedEvent] = useState<HookEventType>('PreToolUse')
@@ -96,6 +98,7 @@ export function HooksPage() {
       setHooks(updated)
       setShowWizard(false)
       setExpandedEvents(prev => new Set([...prev, selectedEvent]))
+      setShowRelaunch(true)
     }
   }
 
@@ -113,6 +116,7 @@ export function HooksPage() {
     if (result.success) {
       addActivity({ type: 'config', message: `Removed hook from ${event}`, status: 'success' })
       setHooks(updated)
+      setShowRelaunch(true)
     }
   }
 
@@ -134,11 +138,13 @@ export function HooksPage() {
       addActivity({ type: 'config', message: `Added hook template: ${template.name}`, status: 'success' })
       setHooks(updated)
       setShowTemplates(false)
+      setShowRelaunch(true)
     }
   }
 
   return (
     <div className="flex flex-col h-full">
+      {showRelaunch && <RelaunchBanner onDismiss={() => setShowRelaunch(false)} />}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
