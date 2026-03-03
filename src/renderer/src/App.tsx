@@ -20,6 +20,7 @@ import { PluginsPage } from './pages/PluginsPage'
 import { PermissionsPage } from './pages/PermissionsPage'
 import { SessionsPage } from './pages/SessionsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
+import { AnalyticsPage } from './pages/AnalyticsPage'
 import { DocsPage } from './pages/DocsPage'
 import { ApiKeysPage } from './pages/ApiKeysPage'
 import { MemoryPage } from './pages/MemoryPage'
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/sessions" element={<SessionsPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/api-keys" element={<ApiKeysPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/docs" element={<DocsPage />} />
             </Routes>
           </div>

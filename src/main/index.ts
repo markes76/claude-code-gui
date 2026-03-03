@@ -6,6 +6,7 @@ import { registerFileHandlers } from './file-handlers'
 import { registerConfigHandlers } from './config-handlers'
 import { registerPtyHandlers } from './pty-bridge'
 import { registerSessionMemoryHandlers } from './session-memory'
+import { registerAnalyticsHandlers } from './analytics-handlers'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -55,6 +56,7 @@ app.whenReady().then(() => {
   registerConfigHandlers(ipcMain)
   registerPtyHandlers(ipcMain)
   registerSessionMemoryHandlers(ipcMain)
+  registerAnalyticsHandlers(ipcMain)
 
   createWindow()
 

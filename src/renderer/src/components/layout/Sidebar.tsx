@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Terminal, FileText, Settings, Zap, Bot,
   Command, Webhook, Server, Plug, Shield, History,
   FolderOpen, HelpCircle, ChevronLeft, ChevronRight,
-  Sparkles, Key, Sun, Moon, Brain, BookOpen
+  Sparkles, Key, Sun, Moon, Brain, BookOpen, BarChart2
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../stores/app-store'
@@ -57,6 +57,7 @@ const navGroups: NavGroup[] = [
       { id: 'permissions', label: 'Permissions', icon: <Shield size={18} />, path: '/permissions' },
       { id: 'sessions', label: 'Sessions', icon: <History size={18} />, path: '/sessions' },
       { id: 'projects', label: 'Projects', icon: <FolderOpen size={18} />, path: '/projects' },
+      { id: 'analytics', label: 'Analytics', icon: <BarChart2 size={18} />, path: '/analytics' },
     ],
   },
   {

@@ -80,13 +80,13 @@ const api = {
     kill: (id: string) =>
       ipcRenderer.send('pty:kill', { id }),
     listSessions: () => ipcRenderer.invoke('pty:list-sessions'),
-    onData: (callback: (payload: { id: string; data: string }) => void) => {
-      const handler = (_event: any, payload: { id: string; data: string }) => callback(payload)
+    onData: (callback: (payload: { id: string; data: string; timestamp?: number; byteCount?: number }) => void) => {
+      const handler = (_event: any, payload: { id: string; data: string; timestamp?: number; byteCount?: number }) => callback(payload)
       ipcRenderer.on('pty:data', handler)
       return () => { ipcRenderer.removeListener('pty:data', handler) }
     },
-    onExit: (callback: (payload: { id: string; exitCode: number; signal: number }) => void) => {
-      const handler = (_event: any, payload: { id: string; exitCode: number; signal: number }) => callback(payload)
+    onExit: (callback: (payload: { id: string; exitCode: number; signal: number; duration?: number }) => void) => {
+      const handler = (_event: any, payload: { id: string; exitCode: number; signal: number; duration?: number }) => callback(payload)
       ipcRenderer.on('pty:exit', handler)
       return () => { ipcRenderer.removeListener('pty:exit', handler) }
     },
@@ -101,6 +101,15 @@ const api = {
     update: (id: string, updates: { title?: string; summary?: string }) =>
       ipcRenderer.invoke('memory:update', id, updates),
     delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
+  },
+
+  // Analytics
+  analytics: {
+    getStats: () => ipcRenderer.invoke('analytics:get-stats'),
+    getByModel: () => ipcRenderer.invoke('analytics:get-by-model'),
+    getByProject: () => ipcRenderer.invoke('analytics:get-by-project'),
+    getByDate: () => ipcRenderer.invoke('analytics:get-by-date'),
+    getSessions: (offset: number, limit: number) => ipcRenderer.invoke('analytics:get-sessions', offset, limit),
   },
 
   // Plugins

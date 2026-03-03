@@ -31,6 +31,9 @@ interface AppState {
   // Activity
   activities: ActivityItem[]
 
+  // Analytics — bump to trigger refetch in AnalyticsPage
+  analyticsRefreshKey: number
+
   // Actions
   setCliAvailable: (available: boolean) => void
   setCliInfo: (info: CliInfo) => void
@@ -48,6 +51,7 @@ interface AppState {
   setPendingSessionMemory: (memory: string | null) => void
   addActivity: (activity: Omit<ActivityItem, 'id' | 'timestamp'>) => void
   clearActivities: () => void
+  refreshAnalytics: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -67,6 +71,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeSessionId: null,
   pendingSessionMemory: null,
   activities: [],
+  analyticsRefreshKey: 0,
 
   setCliAvailable: (available) => set({ cliAvailable: available }),
   setCliInfo: (info) => set({ cliInfo: info }),
@@ -111,4 +116,5 @@ export const useAppStore = create<AppState>((set) => ({
       ].slice(0, 50)
     })),
   clearActivities: () => set({ activities: [] }),
+  refreshAnalytics: () => set((s) => ({ analyticsRefreshKey: s.analyticsRefreshKey + 1 })),
 }))

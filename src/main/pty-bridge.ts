@@ -172,14 +172,14 @@ export function registerPtyHandlers(ipcMain: IpcMain): void {
 
       ptyProcess.onData((data: string) => {
         if (!session.sender.isDestroyed()) {
-          session.sender.send('pty:data', { id, data })
+          session.sender.send('pty:data', { id, data, timestamp: Date.now(), byteCount: data.length })
         }
       })
 
       ptyProcess.onExit(({ exitCode, signal }: { exitCode: number; signal: number }) => {
         console.log(`[pty:exit] id=${id} code=${exitCode} signal=${signal}`)
         if (!session.sender.isDestroyed()) {
-          session.sender.send('pty:exit', { id, exitCode, signal })
+          session.sender.send('pty:exit', { id, exitCode, signal, duration: Date.now() - session.startTime })
         }
         sessions.delete(id)
       })

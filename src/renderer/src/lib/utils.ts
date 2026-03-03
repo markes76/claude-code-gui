@@ -57,6 +57,19 @@ export function buildFrontmatter(fm: Record<string, string>): string {
   return `---\n${lines.join('\n')}\n---\n\n`
 }
 
+export function formatCost(usd: number): string {
+  if (usd === 0) return '$0.00'
+  if (usd < 0.01) return '<$0.01'
+  if (usd < 1) return `$${usd.toFixed(3)}`
+  return `$${usd.toFixed(2)}`
+}
+
+export function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
+  return `${n}`
+}
+
 // Get the api from preload
 export function getApi(): any {
   return (window as any).api

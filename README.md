@@ -41,6 +41,7 @@ On every launch you choose which project folder to open, confirm you trust it, a
 - **Sessions** — View active PTY sessions and manage session memory
 - **Projects** — Open project directories with configuration health scanner, file browser, and activity trail
 - **Activity Trail** — See every file Claude created or modified during a session, including files outside your project (scratchpad, tmp, config). Grouped by location with time-range filtering (1h/4h/24h/7d/30d).
+- **Analytics** — Token usage, cost tracking, and session history parsed directly from Claude Code's own session logs (`~/.claude/projects/`). 5-tab dashboard: Overview, Models, Projects, Sessions, and 30-day cost Timeline. No external tracking — all data stays local.
 - **File Browser** — Navigate project files, view contents, copy to clipboard, and execute scripts (.py, .js, .ts, .sh) directly
 - **API Keys** — Manage environment variables with 20+ preset templates
 - **Dashboard** — System health overview with stat cards and activity feed

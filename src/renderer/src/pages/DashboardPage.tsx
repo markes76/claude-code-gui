@@ -4,11 +4,11 @@ import {
   Zap, Bot, Server, Webhook, Activity, Terminal, FileText,
   Settings, FolderOpen, Play, RotateCcw, Trash2, Cpu,
   RefreshCw, ArrowRight, CheckCircle, AlertCircle, Info, XCircle,
-  Stethoscope, Key, FolderSearch
+  Stethoscope, Key, FolderSearch, BarChart2, Clock
 } from 'lucide-react'
 import { useAppStore } from '../stores/app-store'
 import { StatusBadge } from '../components/shared/StatusBadge'
-import { cn, formatTimestamp, getApi } from '../lib/utils'
+import { cn, formatTimestamp, formatCost, formatTokens, getApi } from '../lib/utils'
 
 interface DiagnosticsInfo {
   version: string
@@ -35,6 +35,9 @@ export function DashboardPage() {
     mcpServers: 0,
     hooks: 0,
     commands: 0,
+    totalCost: 0,
+    totalTokens: 0,
+    sessionCount: 0,
   })
   const [loading, setLoading] = useState(true)
   const [diagnostics, setDiagnostics] = useState<DiagnosticsInfo | null>(null)
@@ -66,12 +69,13 @@ export function DashboardPage() {
     if (!api) { setLoading(false); return }
 
     try {
-      const [skills, agents, commands, userHooks, mcpServers] = await Promise.all([
+      const [skills, agents, commands, userHooks, mcpServers, analyticsStats] = await Promise.all([
         api.config.listSkills().catch(() => []),
         api.config.listAgents().catch(() => []),
         api.config.listCommands().catch(() => []),
         api.config.getHooks('user').catch(() => ({})),
         api.config.getMcpServers('user').catch(() => ({})),
+        api.analytics.getStats().catch(() => null),
       ])
 
       const hookCount = Object.values(userHooks || {}).reduce(
@@ -84,6 +88,9 @@ export function DashboardPage() {
         mcpServers: Object.keys(mcpServers || {}).length,
         hooks: hookCount,
         commands: commands?.length || 0,
+        totalCost: analyticsStats?.totalCost || 0,
+        totalTokens: (analyticsStats?.totalInputTokens || 0) + (analyticsStats?.totalOutputTokens || 0),
+        sessionCount: analyticsStats?.sessionCount || 0,
       })
     } catch (e) {
       // stats stay at 0
@@ -101,6 +108,9 @@ export function DashboardPage() {
     { label: 'MCP Servers', value: stats.mcpServers, icon: <Server size={20} />, color: 'text-accent-blue', path: '/mcp' },
     { label: 'Hooks', value: stats.hooks, icon: <Webhook size={20} />, color: 'text-accent-cyan', path: '/hooks' },
     { label: 'Commands', value: stats.commands, icon: <Terminal size={20} />, color: 'text-accent-green', path: '/commands' },
+    { label: 'Total Cost', value: loading ? '...' : formatCost(stats.totalCost), icon: <BarChart2 size={20} />, color: 'text-accent-yellow', path: '/analytics' },
+    { label: 'Total Tokens', value: loading ? '...' : formatTokens(stats.totalTokens), icon: <Activity size={20} />, color: 'text-accent-cyan', path: '/analytics' },
+    { label: 'Sessions', value: stats.sessionCount, icon: <Clock size={20} />, color: 'text-accent-green', path: '/analytics' },
   ]
 
   const quickActions = [
@@ -211,7 +221,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {statCards.map((card) => (
           <button
             key={card.label}
