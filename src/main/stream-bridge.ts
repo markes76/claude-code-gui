@@ -261,75 +261,70 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
     return []
   }
 
-  function findActiveSessionJSONL(cwd?: string): string | null {
-    const projectsDir = join(homedir(), '.claude', 'projects')
-    let newest: { path: string; mtime: number } | null = null as { path: string; mtime: number } | null
+  // Watch ALL JSONL files in the project dir — whichever gets new entries wins.
+  // This avoids the "wrong file" bug: we used to pick ONE file but often got the
+  // wrong session (e.g. this GUI session instead of the PTY terminal session).
+  const fileOffsets = new Map<string, number>()
 
+  function registerAllJSONLFiles(cwd?: string) {
+    const projectsDir = join(homedir(), '.claude', 'projects')
     const scanDir = (dir: string) => {
       try {
         for (const f of readdirSync(dir)) {
           if (!f.endsWith('.jsonl')) continue
           const p = join(dir, f)
-          try {
-            const mtime = statSync(p).mtimeMs
-            if (!newest || mtime > newest.mtime) newest = { path: p, mtime }
-          } catch { /* ignore */ }
+          if (!fileOffsets.has(p)) {
+            try { fileOffsets.set(p, statSync(p).size) } catch { /* ignore */ }
+          }
         }
       } catch { /* ignore */ }
     }
 
-    // Prefer project-specific dir if cwd is given
     if (cwd) {
-      const slug = cwd.replace(/\//g, '-')
-      scanDir(join(projectsDir, slug))
+      scanDir(join(projectsDir, cwd.replace(/\//g, '-')))
     }
-    if (!newest) {
-      // Fallback: scan all projects
-      try {
-        for (const project of readdirSync(projectsDir)) {
-          scanDir(join(projectsDir, project))
-        }
-      } catch { /* ignore */ }
-    }
-    return newest?.path || null
+    // Always scan all projects so new session files are picked up automatically
+    try {
+      for (const project of readdirSync(projectsDir)) {
+        scanDir(join(projectsDir, project))
+      }
+    } catch { /* ignore */ }
   }
 
   ipcMain.handle('stream:watch-session', (_event, options: { cwd?: string } = {}) => {
     if (watchInterval) { clearInterval(watchInterval); watchInterval = null }
-
-    const file = findActiveSessionJSONL(options.cwd)
-    if (!file) return { success: false, error: 'No active session JSONL found' }
-
-    watchedFile = file
-    watchedFileOffset = statSync(file).size // start from NOW — don't replay history
-    console.log('[stream] Watching session:', file, 'offset:', watchedFileOffset)
+    fileOffsets.clear()
+    registerAllJSONLFiles(options.cwd)
+    console.log('[stream] Watching', fileOffsets.size, 'JSONL files')
 
     watchInterval = setInterval(() => {
-      if (!watchedFile) return
-      try {
-        const size = statSync(watchedFile).size
-        if (size <= watchedFileOffset) return
+      // Re-scan for newly created session files each tick
+      registerAllJSONLFiles(options.cwd)
 
-        const buf = Buffer.alloc(size - watchedFileOffset)
-        const fd = openSync(watchedFile, 'r')
-        readSync(fd, buf, 0, buf.length, watchedFileOffset)
-        closeSync(fd)
-        watchedFileOffset = size
+      for (const [file, offset] of fileOffsets.entries()) {
+        try {
+          const size = statSync(file).size
+          if (size <= offset) continue
 
-        const lines = buf.toString('utf-8').split('\n').filter(Boolean)
-        for (const line of lines) {
-          try {
-            const entry = JSON.parse(line)
-            const events = mapJSONLEntry(entry)
-            for (const event of events) {
-              broadcast('stream:event', { runId: 'watch', event })
-            }
-          } catch { /* skip malformed */ }
-        }
-      } catch { /* ignore stat/read errors */ }
+          const buf = Buffer.alloc(size - offset)
+          const fd = openSync(file, 'r')
+          readSync(fd, buf, 0, buf.length, offset)
+          closeSync(fd)
+          fileOffsets.set(file, size)
+
+          for (const line of buf.toString('utf-8').split('\n').filter(Boolean)) {
+            try {
+              const entry = JSON.parse(line)
+              for (const event of mapJSONLEntry(entry)) {
+                broadcast('stream:event', { runId: 'watch', event })
+              }
+            } catch { /* skip malformed */ }
+          }
+        } catch { fileOffsets.delete(file) }
+      }
     }, 300)
 
-    return { success: true, file }
+    return { success: true }
   })
 
   ipcMain.handle('stream:unwatch-session', () => {
