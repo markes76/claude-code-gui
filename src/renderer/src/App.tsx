@@ -2,6 +2,7 @@ import React, { useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/layout/Sidebar'
 import { TopBar } from './components/layout/TopBar'
+import { WelcomeScreen } from './components/shared/WelcomeScreen'
 import { useClaudeApi } from './hooks/use-claude-api'
 import { useAppStore } from './stores/app-store'
 
@@ -27,6 +28,7 @@ import { RulesPage } from './pages/RulesPage'
 export default function App() {
   const { initialize } = useClaudeApi()
   const theme = useAppStore(s => s.theme)
+  const projectTrusted = useAppStore(s => s.projectTrusted)
   const location = useLocation()
   const isTerminal = location.pathname === '/terminal'
 
@@ -38,6 +40,11 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  // Show project picker + trust flow before the main UI
+  if (!projectTrusted) {
+    return <WelcomeScreen />
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">

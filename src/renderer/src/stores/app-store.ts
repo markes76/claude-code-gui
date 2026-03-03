@@ -16,6 +16,10 @@ interface AppState {
 
   // Project
   currentProjectDir: string | null
+  // Session-only: true after user completes the project picker + trust flow this launch
+  projectTrusted: boolean
+  // Persistent: list of folder paths the user has trusted before (localStorage)
+  trustedProjects: string[]
 
   // Sessions
   sessions: SessionInfo[]
@@ -37,6 +41,8 @@ interface AppState {
   toggleSidebar: () => void
   setCurrentPage: (page: string) => void
   setCurrentProjectDir: (dir: string | null) => void
+  setProjectTrusted: (trusted: boolean) => void
+  addTrustedProject: (dir: string) => void
   setSessions: (sessions: SessionInfo[]) => void
   setActiveSessionId: (id: string | null) => void
   setPendingSessionMemory: (memory: string | null) => void
@@ -52,6 +58,11 @@ export const useAppStore = create<AppState>((set) => ({
   sidebarCollapsed: false,
   currentPage: 'dashboard',
   currentProjectDir: localStorage.getItem('claude-gui-project-dir'),
+  // Always false on boot — user must go through the project picker each session
+  projectTrusted: false,
+  trustedProjects: (() => {
+    try { return JSON.parse(localStorage.getItem('claude-gui-trusted-projects') || '[]') } catch { return [] }
+  })(),
   sessions: [],
   activeSessionId: null,
   pendingSessionMemory: null,
@@ -81,6 +92,13 @@ export const useAppStore = create<AppState>((set) => ({
       localStorage.removeItem('claude-gui-project-dir')
     }
     set({ currentProjectDir: dir })
+  },
+  setProjectTrusted: (trusted) => set({ projectTrusted: trusted }),
+  addTrustedProject: (dir) => {
+    const current = useAppStore.getState().trustedProjects
+    const updated = [...new Set([...current, dir])]
+    localStorage.setItem('claude-gui-trusted-projects', JSON.stringify(updated))
+    set({ trustedProjects: updated })
   },
   setSessions: (sessions) => set({ sessions }),
   setPendingSessionMemory: (memory) => set({ pendingSessionMemory: memory }),

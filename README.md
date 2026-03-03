@@ -4,6 +4,8 @@ A comprehensive desktop GUI wrapper for [Claude Code CLI](https://docs.anthropic
 
 Claude Code GUI gives you a visual interface for everything Claude Code offers: terminal sessions, CLAUDE.md editing, memory management, MCP server configuration, skills, agents, hooks, permissions, and more.
 
+On every launch you choose which project folder to open, confirm you trust it, and then the full IDE loads in that directory — just like VS Code's workspace trust model.
+
 ![Electron](https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
@@ -42,6 +44,11 @@ Claude Code GUI gives you a visual interface for everything Claude Code offers: 
 - **File Browser** — Navigate project files, view contents, copy to clipboard, and execute scripts (.py, .js, .ts, .sh) directly
 - **API Keys** — Manage environment variables with 20+ preset templates
 - **Dashboard** — System health overview with stat cards and activity feed
+
+### Onboarding
+- **Project Picker** — On every launch a full-screen welcome screen prompts you to open a project folder before any terminal or IDE UI appears
+- **Workspace Trust** — New folders show a security warning; previously-trusted folders are remembered with a green shield badge and open in one click
+- **Recent Projects** — Up to 10 recent folders listed for fast re-opening
 
 ### Design
 - Dark and light theme with one-click toggle — all UI elements fully visible in both modes
