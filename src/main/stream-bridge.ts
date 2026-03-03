@@ -266,7 +266,10 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
   // wrong session (e.g. this GUI session instead of the PTY terminal session).
   const fileOffsets = new Map<string, number>()
 
-  function registerAllJSONLFiles(cwd?: string) {
+  // newFromStart=false  → new files start at current EOF (skip existing content — used on init)
+  // newFromStart=true   → new files start at 0 (read all content — used mid-session so
+  //                       sub-agent files created after watch began are fully captured)
+  function registerAllJSONLFiles(cwd?: string, newFromStart = false) {
     const projectsDir = join(homedir(), '.claude', 'projects')
     const scanDir = (dir: string) => {
       try {
@@ -274,7 +277,9 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
           if (!f.endsWith('.jsonl')) continue
           const p = join(dir, f)
           if (!fileOffsets.has(p)) {
-            try { fileOffsets.set(p, statSync(p).size) } catch { /* ignore */ }
+            try {
+              fileOffsets.set(p, newFromStart ? 0 : statSync(p).size)
+            } catch { /* ignore */ }
           }
         }
       } catch { /* ignore */ }
@@ -294,12 +299,14 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('stream:watch-session', (_event, options: { cwd?: string } = {}) => {
     if (watchInterval) { clearInterval(watchInterval); watchInterval = null }
     fileOffsets.clear()
-    registerAllJSONLFiles(options.cwd)
+    registerAllJSONLFiles(options.cwd, false) // false = skip existing content on init
     console.log('[stream] Watching', fileOffsets.size, 'JSONL files')
 
     watchInterval = setInterval(() => {
-      // Re-scan for newly created session files each tick
-      registerAllJSONLFiles(options.cwd)
+      // Re-scan for newly created session files each tick.
+      // newFromStart=true so sub-agent files (created after watch began) are read
+      // from byte 0 — capturing events written before we discovered the file.
+      registerAllJSONLFiles(options.cwd, true)
 
       for (const [file, offset] of fileOffsets.entries()) {
         try {
