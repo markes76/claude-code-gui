@@ -69,7 +69,14 @@ The headline feature of v1.1.0. While Claude works in your terminal, the **Strea
 - Responsive sidebar with collapse support
 - macOS-native title bar integration
 
-## Bug Fixes
+## Bug Fixes & Improvements
+
+### Config Pages — Delete + Restart Prompt (post-v1.1.0)
+
+- **Delete agents** — Hover any agent card to reveal Edit and Delete buttons. Clicking Delete shows a confirmation modal before permanently removing the file.
+- **Delete commands** — Same hover-reveal delete pattern on the Commands page with a confirm modal.
+- **Hooks & Skills** — Delete was already available; now all four config pages (Agents, Commands, Hooks, Skills) are consistent.
+- **Relaunch banner** — After any create, edit, or delete on Agents, Commands, Hooks, or Skills, a banner appears explaining that a restart is required for Claude Code to pick up the changes. Includes a **Restart Now** button that relaunches the app immediately, or dismiss with ✕ to restart later.
 
 ### Live Stream — Sub-Agent Streaming (post-v1.1.0)
 
