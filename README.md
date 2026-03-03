@@ -69,6 +69,17 @@ The headline feature of v1.1.0. While Claude works in your terminal, the **Strea
 - Responsive sidebar with collapse support
 - macOS-native title bar integration
 
+## Bug Fixes
+
+### Live Stream — Sub-Agent Streaming (post-v1.1.0)
+
+Four fixes landed to make sub-agent activity fully visible in the Stream panel:
+
+- **Sub-agent JSONL discovery** — The session watcher now recurses into subdirectories, so JSONL files written by sub-agents at `~/.claude/projects/{project}/{session}/subagents/{agent}.jsonl` are discovered and tailed automatically. Previously only top-level session files were watched.
+- **Sub-agent tool call rendering** — Sub-agent turns arrive as `progress` entries in the parent JSONL. The parser now reads `entry.data?.message` (not `entry.message`) so tool calls and assistant text from sub-agents render correctly in the stream.
+- **Sub-agent session offset** — New JSONL files discovered mid-session are now read from offset 0, so no content is skipped when a sub-agent starts writing to a fresh file.
+- **Newline preservation** — Assistant text bubbles now preserve embedded newlines, so multi-paragraph responses and code blocks no longer collapse into a single line.
+
 ## Prerequisites
 
 You need **Claude Code CLI** installed and **one** of:
