@@ -1,6 +1,6 @@
 {
   "name": "claude-code-gui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A comprehensive GUI wrapper for Claude Code CLI",
   "main": "./out/main/index.js",
   "scripts": {

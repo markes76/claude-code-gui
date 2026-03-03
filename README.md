@@ -2,16 +2,29 @@
 
 A comprehensive desktop GUI wrapper for [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) — the official command-line tool by Anthropic for working with Claude as an AI coding assistant.
 
-Claude Code GUI gives you a visual interface for everything Claude Code offers: terminal sessions, CLAUDE.md editing, memory management, MCP server configuration, skills, agents, hooks, permissions, and more.
+Claude Code GUI gives you a visual interface for everything Claude Code offers: terminal sessions, live structured stream view, CLAUDE.md editing, memory management, MCP server configuration, skills, agents, hooks, permissions, and more.
 
 On every launch you choose which project folder to open, confirm you trust it, and then the full IDE loads in that directory — just like VS Code's workspace trust model.
 
+![Version](https://img.shields.io/badge/version-1.1.0-orange)
 ![Electron](https://img.shields.io/badge/Electron-31-47848F?logo=electron&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind_CSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)
 
-## Features
+## What's New in v1.1.0
+
+### Live Stream — Bidirectional Structured View
+The headline feature of v1.1.0. While Claude works in your terminal, the **Stream** page shows you exactly what it's doing in real time — structured and clean, not raw ANSI escape codes:
+
+- **Tool calls** render as collapsible cards with an icon (file reads, writes, bash, web, agents)
+- **Assistant text** renders as proper markdown — headers, code blocks, lists
+- **Tool results** are shown truncated with "Show more" expansion
+- **Run summaries** display cost in USD, duration in seconds, and pass/fail status
+- **Bidirectional** — write in the terminal and it streams automatically; type in the Stream input and it goes to the terminal
+- **Pop-out window** — detach the stream into a floating window to sit side-by-side with your terminal; the popup respects your chosen app theme
+- **Copy buttons** — hover any card to reveal a copy button; **Copy All** in the header serializes the full stream to plain text
+- **Always watching** — the stream auto-starts on mount, tailing all active Claude session JSONL files without any manual toggle
 
 ### Terminal
 - Full PTY terminal (node-pty + xterm.js) — not a simple exec wrapper
@@ -21,7 +34,6 @@ On every launch you choose which project folder to open, confirm you trust it, a
 - Session memory handoff between sessions
 - **Prompt Composer** — AI-powered prompt enhancement (direct Anthropic API for speed, CLI fallback for Pro/Max/Enterprise users)
 - **Session Summary** — AI-generated session summaries saved as memories
-- **Live Stream** — Structured real-time view of Claude's execution: tool calls rendered as cards, text as markdown bubbles, final cost/duration summary. Pop-out button detaches it into a floating window to sit alongside your terminal
 
 ### Configuration
 - **CLAUDE.md Editor** — Edit all 4 levels (Global, Project, Local, Private) with live preview, templates, and @import detection
@@ -113,12 +125,13 @@ src/
     file-handlers.ts # Secure file operations + activity scanning
     config-handlers.ts # Claude Code config read/write
     pty-bridge.ts    # PTY session management (node-pty)
+    stream-bridge.ts # Live stream: JSONL file polling + pop-out window
     session-memory.ts # Session memory persistence
   preload/           # Context bridge (main ↔ renderer)
     index.ts         # Exposes safe API to renderer
   renderer/          # React SPA
     src/
-      pages/         # 17 page components
+      pages/         # 19 page components
       components/    # Shared UI components
       stores/        # Zustand state management
       types/         # TypeScript type definitions
