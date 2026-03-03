@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
 import { SearchInput } from '../components/shared/SearchInput'
 import { Modal } from '../components/shared/Modal'
+import { RelaunchBanner } from '../components/shared/RelaunchBanner'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
 import type { CommandInfo } from '../types/config'
@@ -41,6 +42,8 @@ export function CommandsPage() {
   const [showEditor, setShowEditor] = useState(false)
   const [editingCmd, setEditingCmd] = useState<CommandInfo | null>(null)
   const [activeTab, setActiveTab] = useState<'custom' | 'builtin'>('custom')
+  const [showRelaunch, setShowRelaunch] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<CommandInfo | null>(null)
 
   const [wizardStep, setWizardStep] = useState(0)
   const [cmdName, setCmdName] = useState('')
@@ -88,6 +91,7 @@ export function CommandsPage() {
       addActivity({ type: 'config', message: `Created command: /${cmdName}`, status: 'success' })
       setShowWizard(false)
       loadCommands()
+      setShowRelaunch(true)
     }
   }
 
@@ -100,11 +104,25 @@ export function CommandsPage() {
       addActivity({ type: 'config', message: `Updated command: /${editingCmd.name}`, status: 'success' })
       setShowEditor(false)
       loadCommands()
+      setShowRelaunch(true)
+    }
+  }
+
+  const handleDelete = async (cmd: CommandInfo) => {
+    const api = getApi()
+    if (!api) return
+    const result = await api.config.deleteCommand(cmd.path)
+    if (result.success) {
+      addActivity({ type: 'config', message: `Deleted command: /${cmd.name}`, status: 'success' })
+      setConfirmDelete(null)
+      loadCommands()
+      setShowRelaunch(true)
     }
   }
 
   return (
     <div className="flex flex-col h-full">
+      {showRelaunch && <RelaunchBanner onDismiss={() => setShowRelaunch(false)} />}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex gap-1">
@@ -154,6 +172,7 @@ export function CommandsPage() {
                 <p className="text-xs text-text-secondary mb-3 line-clamp-2">{cmd.description || 'No description'}</p>
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => { setEditingCmd(cmd); setShowEditor(true) }} className="btn-ghost text-xs"><Edit3 size={12} /> Edit</button>
+                  <button onClick={() => setConfirmDelete(cmd)} className="btn-ghost text-xs text-accent-red hover:text-accent-red"><Trash2 size={12} /> Delete</button>
                 </div>
               </div>
             ))}
@@ -191,6 +210,27 @@ export function CommandsPage() {
           footer={<><button onClick={() => setShowEditor(false)} className="btn-secondary">Cancel</button><button onClick={handleSaveEdit} className="btn-primary"><Save size={14} /> Save</button></>}
         >
           <CodeEditor value={editingCmd.content} onChange={(val) => setEditingCmd({ ...editingCmd, content: val })} language="markdown" minHeight="400px" />
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal
+          open={!!confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          title="Delete Command"
+          footer={
+            <>
+              <button onClick={() => setConfirmDelete(null)} className="btn-secondary">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="btn-primary bg-accent-red/10 text-accent-red border-accent-red/20 hover:bg-accent-red/20">
+                <Trash2 size={14} /> Delete
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-text-secondary">
+            Delete command <span className="font-mono text-text-primary font-medium">/{confirmDelete.name}</span>?
+            This removes the file permanently.
+          </p>
         </Modal>
       )}
     </div>

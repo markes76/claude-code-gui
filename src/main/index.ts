@@ -60,6 +60,12 @@ app.whenReady().then(() => {
   registerAnalyticsHandlers(ipcMain)
   registerStreamHandlers(ipcMain)
 
+  // Relaunch the app (used after config changes that require restart)
+  ipcMain.handle('app:relaunch', () => {
+    app.relaunch()
+    app.exit(0)
+  })
+
   createWindow()
 
   app.on('activate', () => {

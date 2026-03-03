@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/app-store'
 import { EmptyState } from '../components/shared/EmptyState'
 import { SearchInput } from '../components/shared/SearchInput'
 import { Modal } from '../components/shared/Modal'
+import { RelaunchBanner } from '../components/shared/RelaunchBanner'
 import { StepWizard, type WizardStepDef } from '../components/shared/StepWizard'
 import { CodeEditor } from '../components/shared/CodeEditor'
 import type { SkillInfo } from '../types/config'
@@ -24,6 +25,7 @@ export function SkillsPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [editingSkill, setEditingSkill] = useState<SkillInfo | null>(null)
   const [showEditor, setShowEditor] = useState(false)
+  const [showRelaunch, setShowRelaunch] = useState(false)
   const [pluginGroups, setPluginGroups] = useState<Array<{ pluginKey: string; pluginName: string; version: string; skills: Array<{ name: string; description: string; path: string }> }>>([])
   const [expandedPlugins, setExpandedPlugins] = useState<Set<string>>(new Set())
 
@@ -116,6 +118,7 @@ export function SkillsPage() {
       setShowWizard(false)
       resetWizard()
       loadSkills()
+      setShowRelaunch(true)
     } else {
       addActivity({ type: 'config', message: `Failed to create skill: ${result.error}`, status: 'error' })
     }
@@ -128,6 +131,7 @@ export function SkillsPage() {
     if (result.success) {
       addActivity({ type: 'config', message: `Deleted skill: ${skill.name}`, status: 'success' })
       loadSkills()
+      setShowRelaunch(true)
     }
   }
 
@@ -142,6 +146,7 @@ export function SkillsPage() {
       setShowEditor(false)
       setEditingSkill(null)
       loadSkills()
+      setShowRelaunch(true)
     }
   }
 
@@ -165,6 +170,7 @@ export function SkillsPage() {
 
   return (
     <div className="flex flex-col h-full">
+      {showRelaunch && <RelaunchBanner onDismiss={() => setShowRelaunch(false)} />}
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">

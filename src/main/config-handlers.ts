@@ -208,6 +208,16 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     }
   })
 
+  ipcMain.handle('config:delete-agent', async (_event, agentPath: string) => {
+    try {
+      const { unlinkSync } = require('fs')
+      unlinkSync(agentPath)
+      return { success: true }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
   // ── Commands ──────────────────────────────────────────
 
   ipcMain.handle('config:list-commands', async (_event, projectDir?: string) => {
@@ -262,6 +272,16 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     try {
       writeFileSync(filePath, options.content, 'utf-8')
       return { success: true, path: filePath }
+    } catch (e: any) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('config:delete-command', async (_event, commandPath: string) => {
+    try {
+      const { unlinkSync } = require('fs')
+      unlinkSync(commandPath)
+      return { success: true }
     } catch (e: any) {
       return { success: false, error: e.message }
     }
