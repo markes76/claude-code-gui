@@ -206,7 +206,7 @@ export function WelcomeScreen() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {isTrusted && (
-                          <ShieldCheck size={12} className="text-accent-green opacity-70" title="Previously trusted" />
+                          <span title="Previously trusted"><ShieldCheck size={12} className="text-accent-green opacity-70" /></span>
                         )}
                         <ChevronRight size={14} className="text-text-muted group-hover:text-text-primary transition-colors" />
                       </div>

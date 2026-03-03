@@ -7,14 +7,14 @@ interface EditorState {
   claudeMdDirty: Record<string, boolean>
 
   // Settings editor
-  settingsTab: 'user' | 'project' | 'local'
+  settingsTab: 'user' | 'project' | 'local' | 'pricing'
   settingsViewMode: 'visual' | 'json'
 
   // Actions
   setClaudeMdTab: (tab: 'global' | 'project' | 'local' | 'private') => void
   setClaudeMdContent: (scope: string, content: string) => void
   setClaudeMdDirty: (scope: string, dirty: boolean) => void
-  setSettingsTab: (tab: 'user' | 'project' | 'local') => void
+  setSettingsTab: (tab: 'user' | 'project' | 'local' | 'pricing') => void
   setSettingsViewMode: (mode: 'visual' | 'json') => void
 }
 

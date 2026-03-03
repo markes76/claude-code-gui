@@ -2,10 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react'
 import * as Tabs from '@radix-ui/react-tabs'
 import {
   BarChart2, RefreshCw, DollarSign, Zap, History, TrendingUp,
-  ChevronLeft, ChevronRight, FolderOpen, Bot, Calendar
+  ChevronLeft, ChevronRight, FolderOpen, Bot, Calendar, Tag
 } from 'lucide-react'
 import { cn, formatCost, formatTokens, formatTimestamp, getApi } from '../lib/utils'
 import { useAppStore } from '../stores/app-store'
+import { getPricingConfig, applyDiscount, getDiscountPct, type PricingConfig } from '../lib/pricing'
 
 // ── Types (mirror analytics-handlers.ts exports) ─────────────────────────────
 
@@ -75,17 +76,43 @@ function StatCard({ label, value, icon, color }: {
 
 // ── Overview tab ─────────────────────────────────────────────────────────────
 
-function OverviewTab({ stats }: { stats: OverallStats | null }) {
+function OverviewTab({ stats, pricing }: { stats: OverallStats | null; pricing: PricingConfig }) {
   if (!stats) return <EmptyState message="No usage data found yet. Run some Claude sessions to see analytics." />
-  const avgCost = stats.sessionCount > 0 ? stats.totalCost / stats.sessionCount : 0
+  const discountPct = getDiscountPct(pricing)
+  const effectiveCost = applyDiscount(stats.totalCost, pricing)
+  const avgCost = stats.sessionCount > 0 ? effectiveCost / stats.sessionCount : 0
+  const savings = stats.totalCost - effectiveCost
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Cost" value={formatCost(stats.totalCost)} icon={<DollarSign size={20} />} color="text-accent-yellow" />
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="opacity-70 text-accent-yellow"><DollarSign size={20} /></span>
+            {discountPct > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent-green/10 text-accent-green font-medium">
+                -{discountPct}%
+              </span>
+            )}
+          </div>
+          <div className="text-2xl font-heading font-bold text-text-primary">{formatCost(effectiveCost)}</div>
+          <div className="text-xs text-text-secondary mt-0.5">
+            Total Cost
+            {discountPct > 0 && <span className="text-text-muted ml-1">(list: {formatCost(stats.totalCost)})</span>}
+          </div>
+        </div>
         <StatCard label="Total Tokens" value={formatTokens(stats.totalInputTokens + stats.totalOutputTokens)} icon={<Zap size={20} />} color="text-accent-cyan" />
         <StatCard label="Sessions" value={`${stats.sessionCount}`} icon={<History size={20} />} color="text-accent-green" />
         <StatCard label="Avg Cost / Session" value={formatCost(avgCost)} icon={<TrendingUp size={20} />} color="text-accent-purple" />
       </div>
+
+      {discountPct > 0 && savings > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-green/5 border border-accent-green/20 text-sm">
+          <Tag size={14} className="text-accent-green flex-shrink-0" />
+          <span className="text-accent-green font-medium">You save {formatCost(savings)}</span>
+          <span className="text-text-muted text-xs">with your {discountPct}% volume discount applied to all costs below</span>
+        </div>
+      )}
 
       {stats.modelBreakdown.length > 0 && (
         <div className="card">
@@ -99,7 +126,7 @@ function OverviewTab({ stats }: { stats: OverallStats | null }) {
                 </div>
                 <div className="flex items-center gap-4 text-xs text-text-muted">
                   <span>{m.sessions} sessions</span>
-                  <span className="text-accent-yellow font-medium">{formatCost(m.cost)}</span>
+                  <span className="text-accent-yellow font-medium">{formatCost(applyDiscount(m.cost, pricing))}</span>
                 </div>
               </div>
             ))}
@@ -112,7 +139,7 @@ function OverviewTab({ stats }: { stats: OverallStats | null }) {
 
 // ── Models tab ────────────────────────────────────────────────────────────────
 
-function ModelsTab({ models }: { models: ModelStat[] }) {
+function ModelsTab({ models, pricing }: { models: ModelStat[]; pricing: PricingConfig }) {
   if (models.length === 0) return <EmptyState message="No model usage data yet." />
   return (
     <div className="card overflow-x-auto">
@@ -135,7 +162,7 @@ function ModelsTab({ models }: { models: ModelStat[] }) {
               <td className="py-3 pr-4 text-right text-text-secondary">{formatTokens(m.inputTokens)}</td>
               <td className="py-3 pr-4 text-right text-text-secondary">{formatTokens(m.outputTokens)}</td>
               <td className="py-3 pr-4 text-right text-text-secondary">{formatTokens(m.cacheTokens)}</td>
-              <td className="py-3 text-right text-accent-yellow font-medium">{formatCost(m.cost)}</td>
+              <td className="py-3 text-right text-accent-yellow font-medium">{formatCost(applyDiscount(m.cost, pricing))}</td>
             </tr>
           ))}
         </tbody>
@@ -146,7 +173,7 @@ function ModelsTab({ models }: { models: ModelStat[] }) {
 
 // ── Projects tab ──────────────────────────────────────────────────────────────
 
-function ProjectsTab({ projects }: { projects: ProjectStat[] }) {
+function ProjectsTab({ projects, pricing }: { projects: ProjectStat[]; pricing: PricingConfig }) {
   if (projects.length === 0) return <EmptyState message="No project usage data yet." />
   return (
     <div className="space-y-2">
@@ -160,7 +187,7 @@ function ProjectsTab({ projects }: { projects: ProjectStat[] }) {
             <p className="text-xs text-text-muted font-mono truncate">{p.cwd}</p>
           </div>
           <div className="text-right flex-shrink-0 space-y-0.5">
-            <p className="text-sm font-medium text-accent-yellow">{formatCost(p.cost)}</p>
+            <p className="text-sm font-medium text-accent-yellow">{formatCost(applyDiscount(p.cost, pricing))}</p>
             <p className="text-xs text-text-muted">{p.sessions} sessions · {formatTokens(p.inputTokens + p.outputTokens)} tok</p>
           </div>
         </div>
@@ -173,7 +200,7 @@ function ProjectsTab({ projects }: { projects: ProjectStat[] }) {
 
 const PAGE_SIZE = 10
 
-function SessionsTab() {
+function SessionsTab({ pricing }: { pricing: PricingConfig }) {
   const [sessions, setSessions] = useState<SessionStat[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -211,7 +238,7 @@ function SessionsTab() {
               <p className="text-xs text-text-muted font-mono truncate">{s.model} · {formatTimestamp(new Date(s.timestamp).getTime())}</p>
             </div>
             <div className="text-right flex-shrink-0 space-y-0.5">
-              <p className="text-sm font-medium text-accent-yellow">{formatCost(s.cost)}</p>
+              <p className="text-sm font-medium text-accent-yellow">{formatCost(applyDiscount(s.cost, pricing))}</p>
               <p className="text-xs text-text-muted">{formatTokens(s.inputTokens + s.outputTokens)} tokens</p>
             </div>
           </div>
@@ -246,10 +273,10 @@ function SessionsTab() {
 
 // ── Timeline tab ──────────────────────────────────────────────────────────────
 
-function TimelineTab({ days }: { days: DayStat[] }) {
+function TimelineTab({ days, pricing }: { days: DayStat[]; pricing: PricingConfig }) {
   if (days.length === 0) return <EmptyState message="No timeline data for the last 30 days." />
 
-  const maxCost = Math.max(...days.map(d => d.cost), 0.001)
+  const maxCost = Math.max(...days.map(d => applyDiscount(d.cost, pricing)), 0.001)
 
   // Fill in all 30 days (including zero-cost days)
   const allDays: DayStat[] = []
@@ -271,13 +298,14 @@ function TimelineTab({ days }: { days: DayStat[] }) {
       {/* Bar chart */}
       <div className="flex items-end gap-0.5 h-40 w-full">
         {allDays.map((d) => {
-          const pct = maxCost > 0 ? Math.max((d.cost / maxCost) * 100, d.cost > 0 ? 4 : 0) : 0
+          const discountedCost = applyDiscount(d.cost, pricing)
+          const pct = maxCost > 0 ? Math.max((discountedCost / maxCost) * 100, d.cost > 0 ? 4 : 0) : 0
           const label = d.date.slice(5) // MM-DD
           return (
             <div
               key={d.date}
               className="group relative flex-1 flex flex-col items-center justify-end h-full"
-              title={`${d.date}: ${formatCost(d.cost)} · ${formatTokens(d.inputTokens + d.outputTokens)} tokens · ${d.sessions} sessions`}
+              title={`${d.date}: ${formatCost(discountedCost)} · ${formatTokens(d.inputTokens + d.outputTokens)} tokens · ${d.sessions} sessions`}
             >
               <div
                 className={cn(
@@ -304,7 +332,7 @@ function TimelineTab({ days }: { days: DayStat[] }) {
             <div className="flex items-center gap-4 text-xs text-text-muted">
               <span>{d.sessions} sessions</span>
               <span>{formatTokens(d.inputTokens + d.outputTokens)} tokens</span>
-              <span className="text-accent-yellow font-medium w-16 text-right">{formatCost(d.cost)}</span>
+              <span className="text-accent-yellow font-medium w-16 text-right">{formatCost(applyDiscount(d.cost, pricing))}</span>
             </div>
           </div>
         ))}
@@ -341,6 +369,7 @@ export function AnalyticsPage() {
   const [projects, setProjects] = useState<ProjectStat[]>([])
   const [days, setDays]         = useState<DayStat[]>([])
   const [loading, setLoading]   = useState(true)
+  const [pricing, setPricing]   = useState(() => getPricingConfig())
 
   const loadAll = useCallback(async () => {
     const api = getApi()
@@ -362,6 +391,13 @@ export function AnalyticsPage() {
   }, [])
 
   useEffect(() => { loadAll() }, [loadAll, analyticsRefreshKey])
+
+  // Re-read pricing whenever user changes it in Settings
+  useEffect(() => {
+    const handler = () => setPricing(getPricingConfig())
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   return (
     <div className="p-6 space-y-6">
@@ -408,19 +444,19 @@ export function AnalyticsPage() {
           </Tabs.List>
 
           <Tabs.Content value="overview">
-            <OverviewTab stats={stats} />
+            <OverviewTab stats={stats} pricing={pricing} />
           </Tabs.Content>
           <Tabs.Content value="models">
-            <ModelsTab models={models} />
+            <ModelsTab models={models} pricing={pricing} />
           </Tabs.Content>
           <Tabs.Content value="projects">
-            <ProjectsTab projects={projects} />
+            <ProjectsTab projects={projects} pricing={pricing} />
           </Tabs.Content>
           <Tabs.Content value="sessions">
-            <SessionsTab />
+            <SessionsTab pricing={pricing} />
           </Tabs.Content>
           <Tabs.Content value="timeline">
-            <TimelineTab days={days} />
+            <TimelineTab days={days} pricing={pricing} />
           </Tabs.Content>
         </Tabs.Root>
       )}

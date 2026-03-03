@@ -45,6 +45,14 @@ A full 5-tab analytics dashboard built from Claude Code's own session logs:
 - **Timeline** — 30-day cost chart so you can see spending trends over time
 - All data is read directly from \`~/.claude/projects/\` — no external tracking, everything stays local
 
+### Pricing & Discount Configuration
+A new **Pricing** tab in Settings gives you full control over cost calculations:
+- **Pull Latest Pricing** — Fetches current model rates from the Anthropic docs page with one click
+- **Per-model editor** — Adjust input/output prices ($/MTok) for any model individually
+- **Volume discount tiers** — Apply a 2%, 5%, or 9% discount matching your Anthropic commitment level, or enter a custom rate
+- **Savings badge** — The Analytics Overview shows your total savings vs. list pricing when a discount is active
+- All discounts apply instantly across every Analytics tab — no data is modified, only the display
+
 ## v1.0.0 — Previous Enhancements
 
 ### New Models (Feb 2026)
@@ -318,15 +326,16 @@ Rules with path scopes only apply when Claude is working on matching files.
     icon: <Settings size={18} />,
     content: `# Settings
 
-Manage Claude Code settings at three scope levels.
+Manage Claude Code settings at three scope levels, plus API pricing configuration.
 
 ## Scopes
 1. **User** — \`~/.claude/settings.json\` — Your global defaults
 2. **Project** — \`.claude/settings.json\` — Team-shared project settings
 3. **Local** — \`.claude/settings.local.json\` — Private project overrides
+4. **Pricing** — API pricing & volume discount configuration (see below)
 
 ## Visual and JSON Modes
-Toggle between a visual form editor and raw JSON mode for full control.
+For the User, Project, and Local scopes, toggle between a visual form editor and raw JSON mode for full control.
 
 ## Key Settings
 - **Model** — Default model (Opus 4.6, Sonnet 4.6, Sonnet 4.5, Haiku 4.5)
@@ -336,7 +345,26 @@ Toggle between a visual form editor and raw JSON mode for full control.
 
 ## How Scopes Merge
 Settings merge with narrower scopes overriding broader ones:
-User < Project < Local`
+User < Project < Local
+
+## Pricing Tab
+The **Pricing** tab lets you configure how costs are calculated in Analytics:
+
+### Pull Latest Pricing
+Click **Pull Latest Pricing** to fetch current model prices from the Anthropic documentation page. Prices update automatically in the table below. The last-fetched timestamp is shown when up-to-date.
+
+### Per-Model Price Editor
+Edit input and output prices ($/MTok) for each model individually. Changes take effect immediately in the Analytics page. You can restore defaults at any time by pulling the latest pricing.
+
+### Volume Discount Tiers
+Select the discount tier that matches your Anthropic commitment level:
+- **No discount** — Standard list pricing (default)
+- **2% off** — For annual commitments of $100k – $500k
+- **5% off** — For annual commitments of $500k – $1M
+- **9% off** — For annual commitments over $1M
+- **Custom** — Enter your own negotiated discount percentage
+
+Discounts are applied across all Analytics tabs (Overview, Models, Projects, Sessions, Timeline). The savings amount is shown as a badge on the Overview tab.`
   },
   {
     id: 'api-keys',
@@ -620,34 +648,41 @@ Analytics reads directly from \`~/.claude/projects/\` — the same JSONL session
 High-level summary of your total Claude Code usage:
 - **Total Sessions** — Number of completed sessions across all projects
 - **Total Tokens** — Combined input + output token count
-- **Total Cost** — Cumulative spend in USD based on per-model pricing
-- **Active Projects** — Number of distinct project directories with session history
+- **Total Cost** — Cumulative spend in USD based on per-model pricing (with any discount applied)
+- **Top Models** — Your most-used models and their discounted cost
 
 ### Models
 Breakdown of usage by model (Opus, Sonnet, Haiku):
-- Token count per model
-- Cost contribution per model
+- Token count per model (input, output, and cache separately)
+- Cost contribution per model with your discount applied
 - Helps you see which model you're using most and what it costs
 
 ### Projects
 Usage ranked by project directory:
 - Sessions per project
 - Token usage per project
-- Cost per project
+- Cost per project (discount applied)
 - Quickly see which projects drive the most Claude Code activity
 
 ### Sessions
 Paginated log of every session:
 - Session ID, model used, project directory
-- Input tokens, output tokens, and cost per session
-- Duration and timestamp
-- 20 sessions per page with navigation controls
+- Input tokens, output tokens, and cost per session (discount applied)
+- Timestamp and duration
+- 10 sessions per page with navigation controls
 
 ### Timeline
 30-day rolling cost chart:
-- Daily cost bars for the past 30 days
+- Daily cost bars for the past 30 days (discount applied)
 - Spot spending trends, busy days, and quiet periods
-- Refreshes automatically as new sessions complete
+- Top 5 highest-cost days listed below the chart
+
+## Pricing & Discounts
+All cost figures respect your pricing configuration from **Settings → Pricing**:
+- **List pricing** — Default rates for each Claude model (Opus 4.6, Sonnet 4.6, Haiku 4.5, etc.)
+- **Volume discount** — Choose 2% ($100k–$500k), 5% ($500k–$1M), or 9% (>$1M) commitment tier, or enter a custom percentage
+- **Savings badge** — When a discount is active, the Overview tab shows how much you save vs. list price
+- Discounts apply only at display time — the underlying session data is never modified
 
 ## Refresh
 Click the **refresh** icon in the header to re-parse the latest session logs. Analytics updates automatically when you navigate to the page.
