@@ -118,6 +118,8 @@ const api = {
       ipcRenderer.invoke('stream:run', options),
     cancel: () => ipcRenderer.invoke('stream:cancel'),
     getEvents: () => ipcRenderer.invoke('stream:get-events'),
+    watchSession: (options?: { cwd?: string }) => ipcRenderer.invoke('stream:watch-session', options),
+    unwatchSession: () => ipcRenderer.invoke('stream:unwatch-session'),
     openPopup: (options?: { width?: number; height?: number }) =>
       ipcRenderer.invoke('stream:open-popup', options),
     onEvent: (cb: (payload: { runId: string; event: any }) => void) => {

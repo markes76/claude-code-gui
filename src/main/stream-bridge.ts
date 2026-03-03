@@ -2,12 +2,16 @@ import { IpcMain, BrowserWindow, webContents } from 'electron'
 import { spawn, ChildProcess, execSync } from 'child_process'
 import { homedir } from 'os'
 import { join } from 'path'
-import { existsSync, readFileSync, realpathSync, readdirSync } from 'fs'
+import { existsSync, readFileSync, realpathSync, readdirSync, statSync, openSync, readSync, closeSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
 
 let activeProcess: ChildProcess | null = null
 let activeRunId: string | null = null
 let currentRunEvents: any[] = []
+
+let watchInterval: NodeJS.Timeout | null = null
+let watchedFile: string | null = null
+let watchedFileOffset = 0
 
 function broadcast(channel: string, payload: any) {
   for (const wc of webContents.getAllWebContents()) {
@@ -224,6 +228,114 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
       popup.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/stream-popup' })
     }
 
+    return { success: true }
+  })
+
+  // ── Watch Mode: tail the active session's JSONL file ─────────────────
+  // Maps JSONL session log entries to ClaudeStreamMessage-compatible events
+
+  function mapJSONLEntry(entry: any): any[] {
+    if (entry.type === 'assistant' && entry.message?.content) {
+      // Keep text and tool_use blocks; skip thinking blocks
+      const content = entry.message.content.filter(
+        (b: any) => b.type === 'text' || b.type === 'tool_use'
+      )
+      if (content.length === 0) return []
+      return [{ type: 'assistant', message: { ...entry.message, content } }]
+    }
+    if (entry.type === 'user' && entry.message?.content) {
+      // Extract tool_result blocks from user turns
+      return entry.message.content
+        .filter((b: any) => b.type === 'tool_result')
+        .map((b: any) => ({
+          type: 'tool_result',
+          tool_use_id: b.tool_use_id,
+          content: typeof b.content === 'string'
+            ? b.content
+            : Array.isArray(b.content)
+              ? b.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+              : '',
+          is_error: b.is_error,
+        }))
+    }
+    return []
+  }
+
+  function findActiveSessionJSONL(cwd?: string): string | null {
+    const projectsDir = join(homedir(), '.claude', 'projects')
+    let newest: { path: string; mtime: number } | null = null as { path: string; mtime: number } | null
+
+    const scanDir = (dir: string) => {
+      try {
+        for (const f of readdirSync(dir)) {
+          if (!f.endsWith('.jsonl')) continue
+          const p = join(dir, f)
+          try {
+            const mtime = statSync(p).mtimeMs
+            if (!newest || mtime > newest.mtime) newest = { path: p, mtime }
+          } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Prefer project-specific dir if cwd is given
+    if (cwd) {
+      const slug = cwd.replace(/\//g, '-')
+      scanDir(join(projectsDir, slug))
+    }
+    if (!newest) {
+      // Fallback: scan all projects
+      try {
+        for (const project of readdirSync(projectsDir)) {
+          scanDir(join(projectsDir, project))
+        }
+      } catch { /* ignore */ }
+    }
+    return newest?.path || null
+  }
+
+  ipcMain.handle('stream:watch-session', (_event, options: { cwd?: string } = {}) => {
+    if (watchInterval) { clearInterval(watchInterval); watchInterval = null }
+
+    const file = findActiveSessionJSONL(options.cwd)
+    if (!file) return { success: false, error: 'No active session JSONL found' }
+
+    watchedFile = file
+    watchedFileOffset = statSync(file).size // start from NOW — don't replay history
+    console.log('[stream] Watching session:', file, 'offset:', watchedFileOffset)
+
+    watchInterval = setInterval(() => {
+      if (!watchedFile) return
+      try {
+        const size = statSync(watchedFile).size
+        if (size <= watchedFileOffset) return
+
+        const buf = Buffer.alloc(size - watchedFileOffset)
+        const fd = openSync(watchedFile, 'r')
+        readSync(fd, buf, 0, buf.length, watchedFileOffset)
+        closeSync(fd)
+        watchedFileOffset = size
+
+        const lines = buf.toString('utf-8').split('\n').filter(Boolean)
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line)
+            const events = mapJSONLEntry(entry)
+            for (const event of events) {
+              broadcast('stream:event', { runId: 'watch', event })
+            }
+          } catch { /* skip malformed */ }
+        }
+      } catch { /* ignore stat/read errors */ }
+    }, 300)
+
+    return { success: true, file }
+  })
+
+  ipcMain.handle('stream:unwatch-session', () => {
+    if (watchInterval) { clearInterval(watchInterval); watchInterval = null }
+    watchedFile = null
+    watchedFileOffset = 0
     return { success: true }
   })
 }

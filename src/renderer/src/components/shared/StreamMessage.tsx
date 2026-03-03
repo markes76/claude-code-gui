@@ -133,19 +133,35 @@ export function ToolResultCard({ content, isError }: ToolResultCardProps) {
 
 // ── AssistantBubble ────────────────────────────────────────────────────
 
+// Remove lines that are purely box-drawing/separator characters (e.g. PAI formatting)
+function cleanAssistantText(text: string): string {
+  const lines = text.split('\n')
+  const cleaned = lines.filter(line => {
+    const s = line.trim()
+    if (!s) return true // keep blank lines
+    // Filter lines that are purely decorative separators
+    if (/^[═─━╌╍┄┅┈┉=\-─]{4,}/.test(s) && /^[═─━╌╍┄┅┈┉=\-─\s]*$/.test(s)) return false
+    return true
+  })
+  return cleaned.join('\n').trim()
+}
+
 interface AssistantBubbleProps {
   text: string
   isPartial?: boolean
 }
 
 export function AssistantBubble({ text, isPartial }: AssistantBubbleProps) {
+  const cleaned = cleanAssistantText(text)
+  if (!cleaned && !isPartial) return null
+
   return (
     <div className="rounded-xl bg-bg-secondary border border-border px-4 py-3 my-2 text-sm text-text-primary">
-      <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-        <ReactMarkdown>{text}</ReactMarkdown>
+      <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-bg-tertiary [&_code]:text-accent-orange [&_code]:bg-bg-tertiary [&_code]:px-1 [&_code]:rounded">
+        <ReactMarkdown>{cleaned}</ReactMarkdown>
       </div>
       {isPartial && (
-        <span className="inline-block w-2 h-4 bg-accent-orange ml-1 animate-pulse rounded-sm" />
+        <span className="inline-block w-2 h-4 bg-accent-orange ml-1 animate-pulse rounded-sm align-middle" />
       )}
     </div>
   )
