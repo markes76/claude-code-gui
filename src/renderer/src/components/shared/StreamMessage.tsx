@@ -2,9 +2,60 @@ import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
   FileText, PenLine, Terminal, Globe, Bot, Wrench,
-  ChevronDown, ChevronRight, CheckCircle, XCircle, Clock
+  ChevronDown, ChevronRight, CheckCircle, XCircle, Clock, Copy, Check
 } from 'lucide-react'
 import { cn, formatCost } from '../../lib/utils'
+
+function useCopy() {
+  const [copied, setCopied] = useState(false)
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }).catch(() => {})
+  }
+  return { copied, copy }
+}
+
+function CopyBtn({ text }: { text: string }) {
+  const { copied, copy } = useCopy()
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); copy(text) }}
+      className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2 p-1 rounded bg-bg-tertiary hover:bg-bg-primary text-text-muted hover:text-text-primary"
+      title="Copy"
+    >
+      {copied ? <Check size={11} className="text-accent-green" /> : <Copy size={11} />}
+    </button>
+  )
+}
+
+export function messagesToText(messages: ClaudeStreamMessage[]): string {
+  return messages.map(msg => {
+    if (msg.type === 'assistant' && msg.message) {
+      return msg.message.content.map(b => {
+        if (b.type === 'text') return `[Assistant]\n${b.text}`
+        if (b.type === 'tool_use') return `[Tool: ${b.name}]\n${JSON.stringify(b.input, null, 2)}`
+        return ''
+      }).filter(Boolean).join('\n\n')
+    }
+    if (msg.type === 'tool_result') {
+      const raw = msg.content
+      const text = typeof raw === 'string' ? raw
+        : Array.isArray(raw) ? raw.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n') : ''
+      return text ? `[Result${msg.is_error ? ' (error)' : ''}]\n${text}` : ''
+    }
+    if (msg.type === 'result') {
+      const parts = ['[Run Complete]']
+      if (msg.subtype) parts.push(`Status: ${msg.subtype}`)
+      if (msg.cost_usd) parts.push(`Cost: ${formatCost(msg.cost_usd)}`)
+      if (msg.duration_ms) parts.push(`Duration: ${(msg.duration_ms / 1000).toFixed(1)}s`)
+      if (msg.result) parts.push(msg.result)
+      return parts.join(' | ')
+    }
+    return ''
+  }).filter(Boolean).join('\n\n')
+}
 
 // ── Types (matches Claude CLI --output-format stream-json) ─────────────
 
@@ -67,9 +118,11 @@ interface ToolUseCardProps {
 
 export function ToolUseCard({ name, input }: ToolUseCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const copyText = `[Tool: ${name}]\n${JSON.stringify(input, null, 2)}`
 
   return (
-    <div className="rounded-lg border border-accent-blue/20 bg-accent-blue/5 text-xs my-1.5">
+    <div className="relative group rounded-lg border border-accent-blue/20 bg-accent-blue/5 text-xs my-1.5">
+      <CopyBtn text={copyText} />
       <button
         onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent-blue/10 transition-colors rounded-lg"
@@ -108,11 +161,12 @@ export function ToolResultCard({ content, isError }: ToolResultCardProps) {
 
   return (
     <div className={cn(
-      'rounded-lg border text-xs my-1.5 px-3 py-2',
+      'relative group rounded-lg border text-xs my-1.5 px-3 py-2',
       isError
         ? 'border-accent-red/20 bg-accent-red/5'
         : 'border-border bg-bg-secondary'
     )}>
+      <CopyBtn text={content} />
       <div className={cn(
         'font-mono text-[11px] whitespace-pre-wrap break-all',
         isError ? 'text-accent-red' : 'text-text-muted'
@@ -156,7 +210,8 @@ export function AssistantBubble({ text, isPartial }: AssistantBubbleProps) {
   if (!cleaned && !isPartial) return null
 
   return (
-    <div className="rounded-xl bg-bg-secondary border border-border px-4 py-3 my-2 text-sm text-text-primary">
+    <div className="relative group rounded-xl bg-bg-secondary border border-border px-4 py-3 my-2 text-sm text-text-primary">
+      <CopyBtn text={cleaned} />
       <div className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_pre]:bg-bg-tertiary [&_code]:text-accent-orange [&_code]:bg-bg-tertiary [&_code]:px-1 [&_code]:rounded">
         <ReactMarkdown>{cleaned}</ReactMarkdown>
       </div>

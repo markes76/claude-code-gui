@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Radio, ExternalLink, Trash2, Send } from 'lucide-react'
+import { Radio, ExternalLink, Trash2, Send, Copy, Check } from 'lucide-react'
 import { useAppStore } from '../stores/app-store'
 import { getApi } from '../lib/utils'
-import { StreamMessage, ClaudeStreamMessage } from '../components/shared/StreamMessage'
+import { StreamMessage, ClaudeStreamMessage, messagesToText } from '../components/shared/StreamMessage'
 
 export function StreamPage() {
   const { currentProjectDir } = useAppStore()
@@ -11,6 +11,15 @@ export function StreamPage() {
   const [prompt, setPrompt] = useState('')
   const feedRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [copiedAll, setCopiedAll] = useState(false)
+
+  const handleCopyAll = useCallback(() => {
+    if (messages.length === 0) return
+    navigator.clipboard.writeText(messagesToText(messages)).then(() => {
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 1500)
+    }).catch(() => {})
+  }, [messages])
 
   // Auto-scroll to bottom when messages arrive
   useEffect(() => {
@@ -95,9 +104,19 @@ export function StreamPage() {
 
         <div className="flex items-center gap-1 ml-auto">
           {messages.length > 0 && (
-            <button onClick={() => setMessages([])} className="btn-ghost p-1.5" title="Clear">
-              <Trash2 size={13} />
-            </button>
+            <>
+              <button
+                onClick={handleCopyAll}
+                className="btn-ghost p-1.5 flex items-center gap-1 text-xs"
+                title="Copy entire stream"
+              >
+                {copiedAll ? <Check size={13} className="text-accent-green" /> : <Copy size={13} />}
+                <span className="hidden sm:inline">{copiedAll ? 'Copied!' : 'Copy All'}</span>
+              </button>
+              <button onClick={() => setMessages([])} className="btn-ghost p-1.5" title="Clear">
+                <Trash2 size={13} />
+              </button>
+            </>
           )}
           <button
             onClick={() => getApi()?.stream.openPopup()}

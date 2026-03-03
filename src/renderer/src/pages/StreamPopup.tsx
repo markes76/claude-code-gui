@@ -8,6 +8,13 @@ export function StreamPopup() {
   const [running, setRunning] = useState(false)
   const feedRef = useRef<HTMLDivElement>(null)
 
+  // Apply app theme from localStorage (popup is a separate BrowserWindow,
+  // App.tsx theme useEffect doesn't run here)
+  useEffect(() => {
+    const theme = localStorage.getItem('claude-gui-theme') || 'dark'
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [])
+
   // Auto-scroll to bottom
   useEffect(() => {
     const el = feedRef.current
