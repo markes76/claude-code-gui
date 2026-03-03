@@ -127,6 +127,7 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
     const args = [
       '-p', options.prompt,
       '--output-format', 'stream-json',
+      '--verbose',
       '--include-partial-messages',
       '--model', model,
     ]
