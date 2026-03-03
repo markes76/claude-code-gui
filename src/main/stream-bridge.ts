@@ -258,6 +258,31 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
           is_error: b.is_error,
         }))
     }
+
+    // Sub-agent turns are stored as progress entries with a nested message.
+    // Structure: { type: "progress", message: { type: "assistant"|"user", message: { content: [...] } } }
+    if (entry.type === 'progress' && entry.message?.type === 'assistant' && entry.message.message?.content) {
+      const content = entry.message.message.content.filter(
+        (b: any) => b.type === 'text' || b.type === 'tool_use'
+      )
+      if (content.length === 0) return []
+      return [{ type: 'assistant', message: { ...entry.message.message, content } }]
+    }
+    if (entry.type === 'progress' && entry.message?.type === 'user' && entry.message.message?.content) {
+      return entry.message.message.content
+        .filter((b: any) => b.type === 'tool_result')
+        .map((b: any) => ({
+          type: 'tool_result',
+          tool_use_id: b.tool_use_id,
+          content: typeof b.content === 'string'
+            ? b.content
+            : Array.isArray(b.content)
+              ? b.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+              : '',
+          is_error: b.is_error,
+        }))
+    }
+
     return []
   }
 
