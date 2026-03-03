@@ -188,6 +188,8 @@ export function ToolResultCard({ content, isError }: ToolResultCardProps) {
 // ── AssistantBubble ────────────────────────────────────────────────────
 
 // Remove lines that are purely box-drawing/separator characters (e.g. PAI formatting)
+// and ensure single newlines become double-newlines so ReactMarkdown preserves them
+// (Markdown spec: single \n = space, \n\n = paragraph break)
 function cleanAssistantText(text: string): string {
   const lines = text.split('\n')
   const cleaned = lines.filter(line => {
@@ -197,7 +199,15 @@ function cleanAssistantText(text: string): string {
     if (/^[═─━╌╍┄┅┈┉=\-─]{4,}/.test(s) && /^[═─━╌╍┄┅┈┉=\-─\s]*$/.test(s)) return false
     return true
   })
-  return cleaned.join('\n').trim()
+  const joined = cleaned.join('\n').trim()
+
+  // Convert single \n → \n\n so ReactMarkdown renders them as separate blocks.
+  // Split on fenced code blocks first to leave their content untouched.
+  const parts = joined.split(/(```[\s\S]*?```)/g)
+  return parts.map((part, i) => {
+    if (i % 2 === 0) return part.replace(/\n(?!\n)/g, '\n\n') // prose only
+    return part // code blocks unchanged
+  }).join('')
 }
 
 interface AssistantBubbleProps {
