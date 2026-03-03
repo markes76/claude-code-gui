@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import {
   HelpCircle, Terminal, FileText, Settings, Zap, Bot, Command,
   Webhook, Server, Plug, Shield, Keyboard, Key, History,
-  FolderOpen, Brain, BookOpen, LayoutDashboard, Wand2, Search
+  FolderOpen, Brain, BookOpen, LayoutDashboard, Wand2, Search,
+  Radio, BarChart2
 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { SearchInput } from '../components/shared/SearchInput'
@@ -21,7 +22,30 @@ const DOCS: DocSection[] = [
     icon: <Wand2 size={18} />,
     content: `# What's New
 
-## Latest Enhancements
+## v1.1.0 — Live Stream (Mar 2026)
+
+### Live Stream — Bidirectional Structured View
+The headline feature of v1.1.0. A dedicated **Stream** page now shows you exactly what Claude is doing in real time — structured and clean, not raw terminal output.
+
+- **Tool calls** render as collapsible cards (file reads, writes, bash, web searches, agent calls)
+- **Assistant responses** render as proper markdown — headers, code blocks, lists
+- **Tool results** shown inline with expand/collapse and truncation
+- **Run summaries** display cost in USD, duration, and pass/fail status
+- **Bidirectional** — write in the terminal and it streams automatically; type in the Stream input and it goes to the terminal
+- **Pop-out window** — detach into a floating window to sit side-by-side with your terminal; follows your app theme
+- **Copy buttons** — hover any card to reveal a copy button; **Copy All** serializes the full stream to plain text
+- **Always watching** — auto-starts on mount, no manual toggle needed
+
+### Analytics Dashboard
+A full 5-tab analytics dashboard built from Claude Code's own session logs:
+- **Overview** — Total sessions, tokens used, cost to date, and active project count
+- **Models** — Token and cost breakdown per model (Opus, Sonnet, Haiku)
+- **Projects** — Which projects you use most and their cost contribution
+- **Sessions** — Paginated log of every session with model, cost, duration, and timestamp
+- **Timeline** — 30-day cost chart so you can see spending trends over time
+- All data is read directly from \`~/.claude/projects/\` — no external tracking, everything stays local
+
+## v1.0.0 — Previous Enhancements
 
 ### New Models (Feb 2026)
 - **Claude Sonnet 4.6** — Added to the model picker in the terminal and settings. Offers an updated, balanced option alongside Sonnet 4.5.
@@ -146,6 +170,42 @@ Type directly in the terminal:
 - \`/memory\` — Save a memory note
 - \`/init\` — Generate a CLAUDE.md from your project
 - \`/doctor\` — Run a built-in health check`
+  },
+  {
+    id: 'stream',
+    title: 'Live Stream',
+    icon: <Radio size={18} />,
+    content: `# Live Stream
+
+A real-time structured view of everything Claude is doing — rendered as clean cards and markdown, not raw terminal output.
+
+## What It Shows
+While Claude works in your terminal, the Stream page tails all active Claude session logs and renders each event:
+
+- **Tool call cards** — Every file read, write, bash command, web search, or agent call appears as a collapsible card with an icon. Click to expand and see the full input.
+- **Assistant bubbles** — Claude's text responses rendered as proper markdown (headers, code blocks, bullet lists).
+- **Tool result cards** — The output of each tool call, shown truncated with "Show more" expansion for long results.
+- **Run summary card** — When a session completes: pass/fail status, total cost in USD, and duration in seconds.
+
+## Bidirectional
+The stream is fully connected to your terminal in both directions:
+
+- **Terminal → Stream** — Write in the terminal and everything Claude does appears automatically in the stream. No manual connection.
+- **Stream → Terminal** — Type a prompt in the input at the bottom of the Stream page and it sends directly to your active terminal session.
+
+## Pop-Out Window
+Click **Pop Out** in the header to detach the stream into a floating window. Use it side-by-side with your terminal — the popup respects your chosen app theme (light or dark).
+
+## Copy Options
+Hover any card to reveal a **copy button** in the top-right corner:
+- **Tool call card** — copies tool name + full JSON input
+- **Tool result card** — copies full result text (not truncated)
+- **Assistant bubble** — copies the markdown text
+
+The **Copy All** button in the header serializes the entire stream to plain text — useful for pasting into notes, docs, or another AI context window.
+
+## Always On
+The stream auto-starts watching when you navigate to it and stops when you leave. No toggles or manual connection steps required. It scans all Claude session JSONL files in \`~/.claude/projects/\` every 300ms for new activity.`,
   },
   {
     id: 'claude-md',
@@ -542,6 +602,58 @@ Switch between **Project** and **Global** views:
 
 ## Quick Navigation
 Click any detected configuration item to jump directly to its editor page.`
+  },
+  {
+    id: 'analytics',
+    title: 'Analytics',
+    icon: <BarChart2 size={18} />,
+    content: `# Analytics
+
+A full usage dashboard built from Claude Code's own session logs — no external tracking, all data stays local.
+
+## Data Source
+Analytics reads directly from \`~/.claude/projects/\` — the same JSONL session log files Claude Code writes during every session. No data is sent anywhere. Everything is computed locally on your machine.
+
+## Five Tabs
+
+### Overview
+High-level summary of your total Claude Code usage:
+- **Total Sessions** — Number of completed sessions across all projects
+- **Total Tokens** — Combined input + output token count
+- **Total Cost** — Cumulative spend in USD based on per-model pricing
+- **Active Projects** — Number of distinct project directories with session history
+
+### Models
+Breakdown of usage by model (Opus, Sonnet, Haiku):
+- Token count per model
+- Cost contribution per model
+- Helps you see which model you're using most and what it costs
+
+### Projects
+Usage ranked by project directory:
+- Sessions per project
+- Token usage per project
+- Cost per project
+- Quickly see which projects drive the most Claude Code activity
+
+### Sessions
+Paginated log of every session:
+- Session ID, model used, project directory
+- Input tokens, output tokens, and cost per session
+- Duration and timestamp
+- 20 sessions per page with navigation controls
+
+### Timeline
+30-day rolling cost chart:
+- Daily cost bars for the past 30 days
+- Spot spending trends, busy days, and quiet periods
+- Refreshes automatically as new sessions complete
+
+## Refresh
+Click the **refresh** icon in the header to re-parse the latest session logs. Analytics updates automatically when you navigate to the page.
+
+## Privacy
+All session data is stored in \`~/.claude/projects/\` on your local machine. The Analytics page reads these files directly — nothing is uploaded, tracked, or reported externally.`,
   },
   {
     id: 'shortcuts',
