@@ -34,6 +34,7 @@ export default function App() {
   const projectTrusted = useAppStore(s => s.projectTrusted)
   const location = useLocation()
   const isTerminal = location.pathname === '/terminal'
+  const isStream = location.pathname === '/stream'
 
   // Popup window: bare stream view, no sidebar/topbar
   if (location.pathname === '/stream-popup') {
@@ -68,17 +69,24 @@ export default function App() {
             <TerminalPage />
           </div>
 
+          {/* Stream is ALWAYS mounted — uses same fixed layout as Terminal */}
+          <div
+            className="absolute inset-0 flex flex-col"
+            style={{ display: isStream ? '' : 'none' }}
+          >
+            <StreamPage />
+          </div>
+
           {/* Other pages render via normal routing */}
           <div
             className="absolute inset-0 overflow-y-auto"
-            style={{ display: isTerminal ? 'none' : '' }}
+            style={{ display: isTerminal || isStream ? 'none' : '' }}
           >
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/claude-md" element={<ClaudeMdPage />} />
               <Route path="/memory" element={<MemoryPage />} />
               <Route path="/rules" element={<RulesPage />} />
-              <Route path="/stream" element={<StreamPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/skills" element={<SkillsPage />} />
               <Route path="/agents" element={<AgentsPage />} />
