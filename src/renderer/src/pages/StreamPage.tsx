@@ -50,8 +50,15 @@ export function StreamPage() {
       })
     })
 
-    const unsubDone = api.stream.onDone((_payload: { runId: string; exitCode: number }) => {
+    const unsubDone = api.stream.onDone((payload: { runId: string; exitCode: number; stderr?: string }) => {
       setRunning(false)
+      if (payload.exitCode !== 0 && payload.stderr) {
+        setMessages(prev => [...prev, {
+          type: 'result',
+          subtype: 'error',
+          result: payload.stderr,
+        } as any])
+      }
     })
 
     const unsubCancelled = api.stream.onCancelled(() => {

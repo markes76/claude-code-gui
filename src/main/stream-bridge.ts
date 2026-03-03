@@ -41,7 +41,12 @@ function buildUserPath(): string {
 }
 
 function getSpawnEnv(): NodeJS.ProcessEnv {
-  return { ...process.env, PATH: buildUserPath() }
+  const env: NodeJS.ProcessEnv = { ...process.env, PATH: buildUserPath() }
+  // Claude refuses to launch inside another Claude session.
+  // The GUI itself may be started from a claude terminal, so unset the guard.
+  delete env['CLAUDECODE']
+  delete env['CLAUDE_CODE_ENTRYPOINT']
+  return env
 }
 
 function getClaudePath(): string {
@@ -139,6 +144,9 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
 
     activeProcess = proc
 
+    // Close stdin immediately — claude -p reads from args, not stdin
+    proc.stdin?.end()
+
     // Line-by-line JSON parsing
     let buffer = ''
     proc.stdout?.on('data', (chunk) => {
@@ -155,20 +163,23 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
       }
     })
 
+    let stderrText = ''
     proc.stderr?.on('data', (d) => {
-      console.warn('[stream] stderr:', d.toString().trim())
+      const text = d.toString()
+      stderrText += text
+      console.warn('[stream] stderr:', text.trim())
     })
 
     proc.on('close', (exitCode) => {
       if (activeRunId === runId) {
         activeProcess = null
-        broadcast('stream:done', { runId, exitCode })
+        broadcast('stream:done', { runId, exitCode, stderr: stderrText.trim() })
       }
     })
 
     proc.on('error', (e) => {
       console.error('[stream] Process error:', e.message)
-      broadcast('stream:done', { runId, exitCode: -1 })
+      broadcast('stream:done', { runId, exitCode: -1, stderr: e.message })
     })
 
     return { runId }

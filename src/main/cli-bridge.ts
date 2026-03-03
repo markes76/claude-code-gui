@@ -49,10 +49,12 @@ function buildUserPath(): string {
 
 // Shared env for all spawned processes
 function getSpawnEnv(): NodeJS.ProcessEnv {
-  return {
-    ...process.env,
-    PATH: buildUserPath(),
-  }
+  const env: NodeJS.ProcessEnv = { ...process.env, PATH: buildUserPath() }
+  // Claude refuses to launch inside another Claude Code session.
+  // The GUI may be started from a claude terminal so unset the guard vars.
+  delete env['CLAUDECODE']
+  delete env['CLAUDE_CODE_ENTRYPOINT']
+  return env
 }
 
 // ── Claude Binary Resolution ─────────────────────────────────────────
