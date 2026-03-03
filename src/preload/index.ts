@@ -112,6 +112,31 @@ const api = {
     getSessions: (offset: number, limit: number) => ipcRenderer.invoke('analytics:get-sessions', offset, limit),
   },
 
+  // Stream (live structured view of Claude runs)
+  stream: {
+    run: (options: { prompt: string; model?: string; cwd?: string }) =>
+      ipcRenderer.invoke('stream:run', options),
+    cancel: () => ipcRenderer.invoke('stream:cancel'),
+    getEvents: () => ipcRenderer.invoke('stream:get-events'),
+    openPopup: (options?: { width?: number; height?: number }) =>
+      ipcRenderer.invoke('stream:open-popup', options),
+    onEvent: (cb: (payload: { runId: string; event: any }) => void) => {
+      const handler = (_: any, payload: any) => cb(payload)
+      ipcRenderer.on('stream:event', handler)
+      return () => ipcRenderer.removeListener('stream:event', handler)
+    },
+    onDone: (cb: (payload: { runId: string; exitCode: number }) => void) => {
+      const handler = (_: any, payload: any) => cb(payload)
+      ipcRenderer.on('stream:done', handler)
+      return () => ipcRenderer.removeListener('stream:done', handler)
+    },
+    onCancelled: (cb: () => void) => {
+      const handler = () => cb()
+      ipcRenderer.on('stream:cancelled', handler)
+      return () => ipcRenderer.removeListener('stream:cancelled', handler)
+    },
+  },
+
   // Plugins
   plugins: {
     scanSkills: () => ipcRenderer.invoke('plugins:scan-skills'),

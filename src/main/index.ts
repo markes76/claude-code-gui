@@ -7,6 +7,7 @@ import { registerConfigHandlers } from './config-handlers'
 import { registerPtyHandlers } from './pty-bridge'
 import { registerSessionMemoryHandlers } from './session-memory'
 import { registerAnalyticsHandlers } from './analytics-handlers'
+import { registerStreamHandlers } from './stream-bridge'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -57,6 +58,7 @@ app.whenReady().then(() => {
   registerPtyHandlers(ipcMain)
   registerSessionMemoryHandlers(ipcMain)
   registerAnalyticsHandlers(ipcMain)
+  registerStreamHandlers(ipcMain)
 
   createWindow()
 

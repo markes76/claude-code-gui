@@ -21,6 +21,7 @@ On every launch you choose which project folder to open, confirm you trust it, a
 - Session memory handoff between sessions
 - **Prompt Composer** — AI-powered prompt enhancement (direct Anthropic API for speed, CLI fallback for Pro/Max/Enterprise users)
 - **Session Summary** — AI-generated session summaries saved as memories
+- **Live Stream** — Structured real-time view of Claude's execution: tool calls rendered as cards, text as markdown bubbles, final cost/duration summary. Pop-out button detaches it into a floating window to sit alongside your terminal
 
 ### Configuration
 - **CLAUDE.md Editor** — Edit all 4 levels (Global, Project, Local, Private) with live preview, templates, and @import detection

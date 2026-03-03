@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Terminal, FileText, Settings, Zap, Bot,
   Command, Webhook, Server, Plug, Shield, History,
   FolderOpen, HelpCircle, ChevronLeft, ChevronRight,
-  Sparkles, Key, Sun, Moon, Brain, BookOpen, BarChart2
+  Sparkles, Key, Sun, Moon, Brain, BookOpen, BarChart2, Radio
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../stores/app-store'
@@ -28,6 +28,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/' },
       { id: 'terminal', label: 'Terminal', icon: <Terminal size={18} />, path: '/terminal' },
+      { id: 'stream', label: 'Stream', icon: <Radio size={18} />, path: '/stream' },
     ],
   },
   {

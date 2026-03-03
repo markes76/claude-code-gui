@@ -25,6 +25,8 @@ import { DocsPage } from './pages/DocsPage'
 import { ApiKeysPage } from './pages/ApiKeysPage'
 import { MemoryPage } from './pages/MemoryPage'
 import { RulesPage } from './pages/RulesPage'
+import { StreamPage } from './pages/StreamPage'
+import { StreamPopup } from './pages/StreamPopup'
 
 export default function App() {
   const { initialize } = useClaudeApi()
@@ -32,6 +34,11 @@ export default function App() {
   const projectTrusted = useAppStore(s => s.projectTrusted)
   const location = useLocation()
   const isTerminal = location.pathname === '/terminal'
+
+  // Popup window: bare stream view, no sidebar/topbar
+  if (location.pathname === '/stream-popup') {
+    return <StreamPopup />
+  }
 
   useEffect(() => {
     initialize()
@@ -71,6 +78,7 @@ export default function App() {
               <Route path="/claude-md" element={<ClaudeMdPage />} />
               <Route path="/memory" element={<MemoryPage />} />
               <Route path="/rules" element={<RulesPage />} />
+              <Route path="/stream" element={<StreamPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/skills" element={<SkillsPage />} />
               <Route path="/agents" element={<AgentsPage />} />
