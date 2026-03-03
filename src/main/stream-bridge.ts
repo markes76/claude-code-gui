@@ -260,16 +260,16 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
     }
 
     // Sub-agent turns are stored as progress entries with a nested message.
-    // Structure: { type: "progress", message: { type: "assistant"|"user", message: { content: [...] } } }
-    if (entry.type === 'progress' && entry.message?.type === 'assistant' && entry.message.message?.content) {
-      const content = entry.message.message.content.filter(
+    // Structure: { type: "progress", data: { message: { type: "assistant"|"user", message: { content: [...] } } } }
+    if (entry.type === 'progress' && entry.data?.message?.type === 'assistant' && entry.data.message.message?.content) {
+      const content = entry.data.message.message.content.filter(
         (b: any) => b.type === 'text' || b.type === 'tool_use'
       )
       if (content.length === 0) return []
-      return [{ type: 'assistant', message: { ...entry.message.message, content } }]
+      return [{ type: 'assistant', message: { ...entry.data.message.message, content } }]
     }
-    if (entry.type === 'progress' && entry.message?.type === 'user' && entry.message.message?.content) {
-      return entry.message.message.content
+    if (entry.type === 'progress' && entry.data?.message?.type === 'user' && entry.data.message.message?.content) {
+      return entry.data.message.message.content
         .filter((b: any) => b.type === 'tool_result')
         .map((b: any) => ({
           type: 'tool_result',
@@ -299,11 +299,17 @@ export function registerStreamHandlers(ipcMain: IpcMain): void {
     const scanDir = (dir: string) => {
       try {
         for (const f of readdirSync(dir)) {
-          if (!f.endsWith('.jsonl')) continue
           const p = join(dir, f)
-          if (!fileOffsets.has(p)) {
+          if (f.endsWith('.jsonl')) {
+            if (!fileOffsets.has(p)) {
+              try {
+                fileOffsets.set(p, newFromStart ? 0 : statSync(p).size)
+              } catch { /* ignore */ }
+            }
+          } else {
+            // Recurse into subdirectories (e.g. {session-uuid}/subagents/)
             try {
-              fileOffsets.set(p, newFromStart ? 0 : statSync(p).size)
+              if (statSync(p).isDirectory()) scanDir(p)
             } catch { /* ignore */ }
           }
         }
