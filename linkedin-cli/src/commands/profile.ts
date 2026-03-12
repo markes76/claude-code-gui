@@ -28,7 +28,6 @@ function extractIdentifierFromUrl(input: string): string {
 }
 
 async function fetchMyIdentifier(): Promise<string> {
-  const { default: voyagerTypes } = await import('../api/voyager.js');
   const data = await voyagerGet<{ miniProfile?: { publicIdentifier: string } }>(
     ENDPOINTS.me, { delayMs: 0 },
   );
