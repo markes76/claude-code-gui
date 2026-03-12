@@ -1,0 +1,51 @@
+{
+  "name": "linkedin-cli",
+  "version": "0.1.0",
+  "description": "Unofficial CLI for LinkedIn — gives agentic coding tools read access to your LinkedIn account",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "linkedin": "./dist/cli.js",
+    "linkedin-cli": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "playwright": "^1.48.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.8.0"
+  },
+  "keywords": [
+    "linkedin",
+    "cli",
+    "automation",
+    "playwright",
+    "agent",
+    "claude-code"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/markes76/linkedin-cli.git"
+  }
+}
